@@ -1,0 +1,93 @@
+# typescript.syntax — Coloration TypeScript 5.x (+ JSX basique)
+# Encodage: UTF-8
+
+[meta]
+name = TypeScript
+version = 1.0
+file_extensions = .ts,.tsx,.mts,.cts
+case_sensitive = true
+
+[colors]
+comment = comment
+string  = string
+number  = number
+keyword = keyword
+type    = type
+storage = storage
+macro   = macro
+preproc = preproc
+func    = function
+const   = constant
+op      = operator
+punct   = punctuation
+invalid = invalid
+todo    = todo
+regex   = regexp
+attr    = attribute
+tag     = tag
+
+[states]
+initial = code
+
+# =========================
+#  État principal: code
+# =========================
+[state:code]
+# Commentaires
+rule.comment.line = (?P<comment>//[^\n]*) -> comment
+rule.comment.blk  = (?P<comment)/\*[^*]*\*+(?:[^/*][^*]*\*+)*/s -> comment
+rule.todo         = (?P<todo>//\s*(?:TODO|FIXME|BUG|HACK)\b[^\n]*) -> todo
+
+# Chaînes
+rule.string.sq    = (?P<string>'(?:\\.|[^'\\])*') -> string
+rule.string.dq    = (?P<string>"(?:\\.|[^"\\])*") -> string
+rule.string.tpl   = (?P<string>`(?:\\.|[^`\\])*`) -> string
+
+# Regex littéraux (heuristique: après opérateurs ou début de ligne)
+rule.regex        = (?P<regex>(?:(?<=\=)|(?<=\()|(?<=\{|\[)|(?<=,)|(?<=:)||(?<=return)|^))\s*/(?![/*])(?:\\.|[^/\\])*/[a-zA-Z]*) -> regex
+
+# Nombres
+rule.num.bin      = (?P<number>0[bB][01](?:_?[01])*) -> number
+rule.num.oct      = (?P<number>0[oO][0-7](?:_?[0-7])*) -> number
+rule.num.hex      = (?P<number>0[xX][0-9a-fA-F](?:_?[0-9a-fA-F])*) -> number
+rule.num.dec      = (?P<number>(?:\d(?:_?\d)*)?(?:\.(?:\d(?:_?\d)*)?)?(?:[eE][+-]?\d(?:_?\d)*)?)\b -> number
+
+# Décorateurs
+rule.decorator    = (?P<macro>@[A-Za-z_][A-Za-z0-9_]*)(?=\s*\() -> macro
+
+# Mots clés TS/JS
+rule.keywords     = (?P<keyword>\b(?:break|case|catch|class|const|continue|debugger|default|delete|do|else|export|extends|finally|for|from|function|get|if|import|in|instanceof|let|new|of|return|set|super|switch|throw|try|typeof|var|void|while|with|yield|as|asserts|satisfies|infer|await)\b) -> keyword
+
+# Stockage/contrats TS
+rule.storage      = (?P<storage>\b(?:interface|type|enum|namespace|module|abstract|private|protected|public|readonly|override|implements|declare|keyof|unique|using)\b) -> storage
+
+# Types globaux
+rule.types        = (?P<type>\b(?:any|unknown|never|void|null|undefined|boolean|number|string|bigint|symbol|object|this|super)\b) -> type
+
+# Identifiants en PascalCase comme types potentiels (heuristique)
+rule.pascal.type  = (?P<type>\b[A-Z][A-Za-z0-9_]*\b)(?=\s*[<\[]) -> type
+
+# Fonctions: ident suivi de (
+rule.func         = (?P<func>\b[A-Za-z_$][A-Za-z0-9_$]*)(?=\s*\() -> function
+
+# Constantes TS courantes
+rule.const        = (?P<const>\b(?:NaN|Infinity|globalThis)\b) -> constant
+
+# Opérateurs
+rule.op           = (?P<op>\|\||&&|\?\?|=>|==?=?|!=?=?|<<<?|>>>?|\+\+|--|\+|\-|\*\*?|\/|%|~|\^|&|\?|:|\.|\.{2,3}) -> operator
+
+# Ponctuation
+rule.punct        = (?P<punct>[\[\]\{\}\(\),;]) -> punctuation
+
+# Génériques, balises JSX basiques
+rule.jsx.tag.open = (?P<tag><[A-Za-z][A-Za-z0-9:_-]*)(?=[^>]*>) -> tag
+rule.jsx.attr     = (?P<attr>\b[A-Za-z_:][-A-Za-z0-9_:.]*)(?=\=) -> attribute
+rule.jsx.tag.end  = (?P<tag></\s*[A-Za-z][A-Za-z0-9:_-]*\s*>) -> tag
+
+# Invalides simples
+rule.invalid.ctrl = (?P<invalid>[\x00-\x08\x0B\x0C\x0E-\x1F]) -> invalid
+
+# =========================
+#  Extensions d'état simples
+# =========================
+# Aucun état imbriqué requis pour un surlignage basique.
