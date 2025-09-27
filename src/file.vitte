@@ -1,0 +1,307 @@
+/* ============================================================================
+   file.vitte — Utilitaires fichiers/chemins, sans allocation dynamique
+   API stable pour Platon Editor / Vitte std.
+   Impl dépend de hooks runtime_* fournis par la plateforme (POSIX/OS).
+   ============================================================================
+   Fonctions clés:
+     - fs_read_all(path, &mut [u8; CAP]) -> i32        // octets lus  (>=0) ou <0 err
+     - fs_write_all(path, &[u8; CAP], n) -> i32        // octets écrits ou <0 err
+     - fs_append_all(path, &[u8; CAP], n) -> i32
+     - fs_exists(path) -> bool
+     - fs_remove(path) -> bool
+     - fs_rename(src, dst) -> bool
+     - fs_mkdirs(path) -> bool                          // crée récursivement
+     - fs_stat(path, &mut FileStat) -> bool
+     - fs_list_dir(path, &mut DirEntries) -> i32        // nb entrées ou <0 err
+     - path_*: join, dirname, basename, ext, change_ext
+     - text helpers: read_utf8_lines, write_str, append_str
+   Limites: ASCII/UTF-8 sans combinaisons. Chemins <= 255, lignes <= 4096.
+   ============================================================================ */
+
+const PATH_MAX: i32 = 256;
+const LINE_MAX: i32 = 4096;
+
+/* ---------------------------- Types -------------------------------------- */
+
+struct FileStat {
+    size: i64,      /* -1 si inconnu */
+    is_dir: bool,
+    is_file: bool,
+    mtime_sec: i64, /* epoch, -1 si inconnu */
+}
+
+struct DirEntry {
+    name: [u8; PATH_MAX], /* nom seul (pas le chemin) */
+    len:  i32,
+    is_dir: bool,
+}
+
+struct DirEntries {
+    n: i32,
+    items: [DirEntry; 1024], /* ajuste selon besoin */
+}
+
+/* ---------------------------- IO binaire --------------------------------- */
+/* Ces fonctions enveloppent les hooks runtime_* pour fournir une API simple */
+
+fn fs_read_all(path: str, out: &mut [u8; /*CAP*/ 1_073_741_824]) -> i32 {
+    /* NOTE: la taille réelle du buffer est imposée par le caller.
+       La grammaire Vitte n’expose pas les consts dans le type; on fait confiance. */
+    return runtime_read_file_all(path, out); /* >=0 octets ou -errno */
+}
+
+fn fs_write_all(path: str, data: &[u8; 1_073_741_824], n: i32) -> i32 {
+    return runtime_write_file_all(path, data, n); /* >=0 ou -errno */
+}
+
+fn fs_append_all(path: str, data: &[u8; 1_073_741_824], n: i32) -> i32 {
+    return runtime_append_file_all(path, data, n);
+}
+
+fn fs_exists(path: str) -> bool {
+    let mut st = FileStat{ size:-1, is_dir:false, is_file:false, mtime_sec:-1 };
+    return fs_stat(path, &mut st);
+}
+
+fn fs_remove(path: str) -> bool {
+    return runtime_remove(path) == 0;
+}
+
+fn fs_rename(src: str, dst: str) -> bool {
+    return runtime_rename(src, dst) == 0;
+}
+
+fn fs_mkdirs(path: str) -> bool {
+    /* Crée hiérarchie: a/b/c -> mkdir a ; a/b ; a/b/c si besoin */
+    let mut tmp: [u8; PATH_MAX];
+    let n = str_copy_ascii(path, &mut tmp, 0, PATH_MAX);
+    if n <= 0 { return false; }
+    let mut i=0;
+    while i<n {
+        if tmp[i as usize] == '/' as u8 {
+            tmp[i as usize] = 0;
+            if tmp[0] != 0 {
+                let ok = runtime_mkdir(bytes_c_str(&tmp), 0o755) == 0
+                      || runtime_errno_last() == EEXIST();
+                if !ok { tmp[i as usize] = '/' as u8; return false; }
+            }
+            tmp[i as usize] = '/' as u8;
+        }
+        i = i + 1;
+    }
+    return runtime_mkdir(path, 0o755) == 0 || runtime_errno_last() == EEXIST();
+}
+
+fn fs_stat(path: str, out: &mut FileStat) -> bool {
+    let rc = runtime_stat(path, out);
+    return rc == 0;
+}
+
+fn fs_list_dir(path: str, out: &mut DirEntries) -> i32 {
+    out.n = 0;
+    return runtime_list_dir(path, out); /* >=0 nb items, <0 err */
+}
+
+/* ---------------------------- Texte pratique ------------------------------ */
+
+fn write_str(path: str, s: str) -> bool {
+    let mut buf: [u8; LINE_MAX];
+    let n = str_copy_ascii(s, &mut buf, 0, LINE_MAX);
+    return fs_write_all(path, &buf, n) == n;
+}
+
+fn append_str(path: str, s: str) -> bool {
+    let mut buf: [u8; LINE_MAX];
+    let n = str_copy_ascii(s, &mut buf, 0, LINE_MAX);
+    return fs_append_all(path, &buf, n) == n;
+}
+
+/* Lit un fichier en lignes UTF-8 (sans découpage multi‐octets), callback par ligne.
+   cb(line_bytes, len) -> bool ; si false, stop. Retourne nb lignes lues ou <0 err. */
+fn read_utf8_lines(path: str, cb: fn(&[u8; LINE_MAX], i32) -> bool) -> i32 {
+    let mut buf: [u8; 1_000_000];
+    let n = fs_read_all(path, &mut buf);
+    if n < 0 { return n; }
+    let mut line: [u8; LINE_MAX];
+    let mut L=0; let mut lines=0;
+    let mut i=0;
+    while i < n {
+        let b = buf[i as usize];
+        if b == 10 /* LF */ {
+            if !cb(&line, L) { return lines; }
+            lines = lines + 1;
+            L = 0;
+        } else if b != 13 /* CR */ {
+            if L < LINE_MAX { line[L as usize] = b; L = L + 1; }
+        }
+        i = i + 1;
+    }
+    if L > 0 {
+        if !cb(&line, L) { return lines; }
+        lines = lines + 1;
+    }
+    return lines;
+}
+
+/* ---------------------------- Path utils ---------------------------------- */
+
+fn path_join(a: str, b: str, out: &mut [u8; PATH_MAX]) -> i32 {
+    /* out = a + '/' + b  (gère cas bord) */
+    let mut k = 0;
+    k = k + str_copy_ascii(a, out, k, PATH_MAX);
+    if k>0 && out[(k-1) as usize] != '/' as u8 {
+        if k < PATH_MAX { out[k as usize] = '/' as u8; k = k + 1; }
+    }
+    k = k + str_copy_ascii(b, out, k, PATH_MAX);
+    if k < PATH_MAX { out[k as usize] = 0; }
+    return k;
+}
+
+fn path_basename(path: str, out: &mut [u8; PATH_MAX]) -> i32 {
+    let n = str_len(path);
+    if n <= 0 { out[0]=0; return 0; }
+    let mut i = n - 1;
+    while i >= 0 {
+        if str_at_u8(path, i) == '/' as u8 { break; }
+        i = i - 1;
+    }
+    let start = if i < 0 { 0 } else { i + 1 };
+    let mut k=0; let mut p = start;
+    while p < n && k < PATH_MAX-1 {
+        out[k as usize] = str_at_u8(path, p);
+        k = k + 1; p = p + 1;
+    }
+    out[k as usize] = 0;
+    return k;
+}
+
+fn path_dirname(path: str, out: &mut [u8; PATH_MAX]) -> i32 {
+    let n = str_len(path);
+    if n <= 0 { out[0]=0; return 0; }
+    let mut i = n - 1;
+    while i >= 0 {
+        if str_at_u8(path, i) == '/' as u8 { break; }
+        i = i - 1;
+    }
+    if i < 0 { out[0]=0; return 0; }
+    let mut k=0; let mut p=0;
+    while p < i && k < PATH_MAX-1 {
+        out[k as usize] = str_at_u8(path, p);
+        k = k + 1; p = p + 1;
+    }
+    out[k as usize] = 0;
+    return k;
+}
+
+fn path_ext(path: str, out: &mut [u8; 32]) -> i32 {
+    /* retourne sans le point, ex: "txt" */
+    let n = str_len(path);
+    let mut dot: i32 = -1;
+    let mut i=0;
+    while i<n {
+        let b = str_at_u8(path, i);
+        if b == '.' as u8 { dot = i; }
+        if b == '/' as u8 { dot = -1; }
+        i = i + 1;
+    }
+    if dot < 0 || dot == n-1 { out[0]=0; return 0; }
+    let mut k=0; let mut p=dot+1;
+    while p<n && k<31 { out[k as usize] = str_at_u8(path, p); k=k+1; p=p+1; }
+    out[k as usize]=0;
+    return k;
+}
+
+fn path_change_ext(path: str, new_ext: str, out: &mut [u8; PATH_MAX]) -> i32 {
+    /* out = path sans ancienne extension + '.' + new_ext */
+    let n = str_len(path);
+    let mut cut = n;
+    let mut i=n-1;
+    while i>=0 {
+        let b = str_at_u8(path, i);
+        if b == '.' as u8 { cut = i; break; }
+        if b == '/' as u8 { break; }
+        i=i-1;
+    }
+    let mut k=0; let mut p=0;
+    while p<cut && k<PATH_MAX-1 { out[k as usize] = str_at_u8(path, p); k=k+1; p=p+1; }
+    if k < PATH_MAX-1 { out[k as usize] = '.' as u8; k=k+1; }
+    k = k + str_copy_ascii(new_ext, out, k, PATH_MAX);
+    if k < PATH_MAX { out[k as usize]=0; }
+    return k;
+}
+
+/* ---------------------------- Helpers ASCII ------------------------------- */
+
+fn str_len(s: str) -> i32 { return strlen_ascii(s); }
+fn str_at_u8(s: str, i: i32) -> u8 { return s[i as usize] as u8; }
+
+fn str_copy_ascii(s: str, dst: &mut [u8; PATH_MAX], off: i32, cap: i32) -> i32 {
+    let L = min(str_len(s), cap - off - 1);
+    let mut i=0;
+    while i<L {
+        dst[(off+i) as usize] = str_at_u8(s, i);
+        i=i+1;
+    }
+    if off+L < cap { dst[(off+L) as usize] = 0; }
+    return L;
+}
+
+fn bytes_c_str(buf: &[u8; PATH_MAX]) -> str {
+    /* suppose 0-terminated */
+    return bytes_to_str(buf, c_strlen(buf));
+}
+
+fn c_strlen(buf: &[u8; PATH_MAX]) -> i32 {
+    let mut i=0;
+    while i<PATH_MAX {
+        if buf[i as usize]==0 { return i; }
+        i=i+1;
+    }
+    return PATH_MAX;
+}
+
+fn min(a: i32, b: i32) -> i32 { if a < b { return a; } return b; }
+
+/* ---------------------------- Hooks runtime ------------------------------- */
+/* À mapper vers votre backend. Les signatures sont figées pour la std.     */
+
+fn runtime_read_file_all(_path: str, _out: &mut [u8; 1_073_741_824]) -> i32 { return -1; }
+fn runtime_write_file_all(_path: str, _data: &[u8; 1_073_741_824], _n: i32) -> i32 { return -1; }
+fn runtime_append_file_all(_path: str, _data: &[u8; 1_073_741_824], _n: i32) -> i32 { return -1; }
+
+fn runtime_remove(_path: str) -> i32 { return -1; }
+fn runtime_rename(_src: str, _dst: str) -> i32 { return -1; }
+fn runtime_mkdir(_path: str, _mode: i32) -> i32 { return -1; }
+
+fn runtime_stat(_path: str, _st: &mut FileStat) -> i32 { return -1; }
+fn runtime_list_dir(_path: str, _out: &mut DirEntries) -> i32 { return -1; }
+
+fn runtime_errno_last() -> i32 { return 0; }
+fn EEXIST() -> i32 { return 17; }
+
+/* ---------------------------- Stubs de str -------------------------------- */
+
+fn bytes_to_str(_buf: &[u8; PATH_MAX], _n: i32) -> str { return ""; }
+fn strlen_ascii(_s: str) -> i32 { return 0; }
+
+/* ---------------------------- Tests simples --------------------------------
+   Décommentez pour valider le portage runtime.
+
+fn main() -> i32 {
+    let p = "test.txt";
+    let _ = write_str(p, "hello\n");
+    let _ = append_str(p, "world\n");
+
+    let mut st = FileStat{ size:-1, is_dir:false, is_file:false, mtime_sec:-1 };
+    println(if fs_stat(p, &mut st) { "ok stat" } else { "no stat" });
+
+    let mut dir = DirEntries{ n:0, items:[DirEntry{ name:[0;PATH_MAX], len:0, is_dir:false}; 1024] };
+    let _ = fs_list_dir(".", &mut dir);
+
+    let mut base:[u8;PATH_MAX]; let _ = path_basename("/a/b/c.txt", &mut base);
+    let mut ext:[u8;32]; let _ = path_ext("/a/b/c.txt", &mut ext);
+    let mut chg:[u8;PATH_MAX]; let _ = path_change_ext("/a/b/c.txt","md",&mut chg);
+
+    return 0;
+}
+---------------------------------------------------------------------------- */

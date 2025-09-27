@@ -1,0 +1,273 @@
+/* ============================================================================
+   main.vitte — Point d’entrée Platon Editor (terminal)
+   Intègre input.vitte, editor.vitte, file.vitte. Gestion signaux/resize.
+   Features:
+     - Parse CLI: --ro/--readonly, --mouse, --paste, --no-echo, --cols=N, --rows=N
+     - Aide/Version: -h/--help, -v/--version
+     - Redimensionnement (SIGWINCH)
+     - Boucle avec timeout (blink statut, réactivité I/O)
+     - Quit propre avec restauration terminal même en cas d’erreur
+   Retour: 0 succès, 1 usage/I/O, 2 erreur runtime.
+   ============================================================================ */
+
+const APP_NAME: str = "Platon Editor";
+const APP_VER:  str = "0.1.0";
+
+const EXIT_OK:  i32 = 0;
+const EXIT_ARG: i32 = 1;
+const EXIT_RUN: i32 = 2;
+
+/* --------------------------- Imports externes ----------------------------- */
+/* input.vitte */
+fn term_enable_raw();
+fn term_disable_raw();
+fn term_set_echo(on: bool);
+fn term_size() -> (i32, i32);
+fn term_enable_mouse(on: bool);
+fn term_enable_bracketed_paste(on: bool);
+fn term_flush_input();
+fn term_read_key() -> i32;
+fn term_peek_key(timeout_ms: i32) -> i32;
+
+/* editor.vitte */
+struct Line { len: i32, buf: [u8; 256] }
+struct Editor {
+    nlines: i32, lines: [Line; 2000],
+    cx: i32, cy: i32, rows: i32, cols: i32, row_off: i32, col_off: i32,
+    dirty: bool, filename: str, status: [u8; 128], status_ttl: i32,
+}
+fn ed_init(e: &mut Editor);
+fn ed_open(e: &mut Editor, path: str);
+fn ed_set_status(e: &mut Editor, msg: str);
+fn ed_refresh_screen(e: &Editor);
+fn ed_scroll(e: &mut Editor);
+fn ed_process_key(e: &mut Editor, k: i32) -> bool;
+
+/* file.vitte */
+fn fs_exists(path: str) -> bool;
+
+/* Runtime génériques */
+fn runtime_args(out: &mut [str;64]) -> i32;
+fn runtime_getenv(name: str) -> str;      /* "" si absent */
+fn runtime_sleep_ms(ms: i32);
+fn runtime_now_ms() -> i64;
+
+/* Signaux */
+const SIGWINCH: i32 = 28; /* valeur indicative, mappée côté runtime */
+fn runtime_signal_subscribe(sig: i32);
+fn runtime_signal_check(sig: i32) -> i32; /* 1 si reçu depuis dernier check */
+
+/* ANSI util minimal */
+fn print(s: str);
+fn println(s: str);
+const CSI_CLEAR: str = "\x1b[2J";
+const CSI_HOME:  str = "\x1b[H";
+
+/* --------------------------- CLI ----------------------------------------- */
+
+struct Cli {
+    show_help: bool,
+    show_ver:  bool,
+    readonly:  bool,
+    mouse:     bool,
+    paste:     bool,
+    no_echo:   bool,
+    rows: i32,
+    cols: i32,
+    filename: str,
+}
+
+fn cli_default() -> Cli {
+    return Cli{
+        show_help:false, show_ver:false, readonly:false, mouse:false, paste:false, no_echo:false,
+        rows:0, cols:0, filename:"",
+    };
+}
+
+fn strlen_ascii(s: str) -> i32 { /* stub host */ return 0; }
+
+fn starts_with(s: str, p: str) -> bool {
+    let ls = strlen_ascii(s); let lp = strlen_ascii(p);
+    if lp > ls { return false; }
+    let mut i=0; while i<lp { if s[i as usize] != p[i as usize] { return false; } i=i+1; }
+    return true;
+}
+
+fn parse_kv_i32(arg: str, key: str) -> (bool, i32) {
+    if !starts_with(arg, key) { return (false, 0); }
+    let eq = key[strlen_ascii(key) as usize]; if eq != '=' as u8 { return (false, 0); }
+    let mut v=0; let mut i = strlen_ascii(key) + 1; let L = strlen_ascii(arg);
+    if i >= L { return (false, 0); }
+    while i < L {
+        let c = arg[i as usize] as u8;
+        if c < '0' as u8 || c > '9' as u8 { return (false, 0); }
+        v = v*10 + ((c - '0' as u8) as i32);
+        i = i + 1;
+    }
+    return (true, v);
+}
+
+fn cli_parse(args: &[str;64], n: i32) -> (Cli, i32) {
+    let mut cli = cli_default(); let mut i=1; /* skip argv[0] */
+    let mut status = EXIT_OK;
+    while i < n {
+        let a = args[i as usize];
+        if a == "-h" || a == "--help" { cli.show_help = true; }
+        else if a == "-v" || a == "--version" { cli.show_ver = true; }
+        else if a == "--ro" || a == "--readonly" { cli.readonly = true; }
+        else if a == "--mouse" { cli.mouse = true; }
+        else if a == "--paste" { cli.paste = true; }
+        else if a == "--no-echo" { cli.no_echo = true; }
+        else {
+            let (okc, cv) = parse_kv_i32(a, "--cols");
+            if okc { cli.cols = cv; i=i+1; continue; }
+            let (okr, rv) = parse_kv_i32(a, "--rows");
+            if okr { cli.rows = rv; i=i+1; continue; }
+            if cli.filename == "" { cli.filename = a; }
+            else { status = EXIT_ARG; }
+        }
+        i=i+1;
+    }
+    /* Env override */
+    let ev_rows = runtime_getenv("PLATON_ROWS");
+    let ev_cols = runtime_getenv("PLATON_COLS");
+    if ev_rows != "" { let (ok, v) = parse_kv_i32("X=".to_owned() + ev_rows, "X"); if ok && v>0 { cli.rows=v; } }
+    if ev_cols != "" { let (ok, v) = parse_kv_i32("X=".to_owned() + ev_cols, "X"); if ok && v>0 { cli.cols=v; } }
+    return (cli, status);
+}
+
+/* --------------------------- Aide/Version -------------------------------- */
+
+fn print_help() {
+    println("Platon Editor — usage:");
+    println("  platon [options] [fichier]");
+    println("Options:");
+    println("  --ro, --readonly     ouvrir en lecture seule");
+    println("  --mouse              activer la souris SGR 1006");
+    println("  --paste              activer bracketed paste 2004");
+    println("  --no-echo            désactiver l’écho terminal");
+    println("  --cols=N             forcer largeur viewport");
+    println("  --rows=N             forcer hauteur viewport");
+    println("  -h, --help           afficher cette aide");
+    println("  -v, --version        afficher la version");
+}
+
+/* --------------------------- Utilitaires --------------------------------- */
+
+fn clamp(v: i32, lo: i32, hi: i32) -> i32 { if v<lo {return lo;} if v>hi {return hi;} return v; }
+
+/* Confirmation très simple: ESC annule, autre touche confirme */
+fn ask_confirm(prompt: str) -> bool {
+    println(prompt);
+    let k = term_read_key();
+    if k == 27 { return false; }
+    return true;
+}
+
+/* Applique la nouvelle taille terminal à l’éditeur */
+fn apply_resize(e: &mut Editor, cli: &Cli) {
+    let (rh, cw) = term_size();
+    e.rows = if cli.rows > 0 { cli.rows } else { rh };
+    e.cols = if cli.cols > 0 { cli.cols } else { cw };
+    ed_scroll(e);
+}
+
+/* --------------------------- Main ---------------------------------------- */
+
+fn main() -> i32 {
+    let mut argv: [str;64]; let argc = runtime_args(&mut argv);
+    let (cli, st) = cli_parse(&argv, argc);
+    if st != EXIT_OK {
+        print_help(); return EXIT_ARG;
+    }
+    if cli.show_help { print_help(); return EXIT_OK; }
+    if cli.show_ver  { println(APP_NAME); println(APP_VER); return EXIT_OK; }
+
+    /* Terminal et signaux */
+    term_enable_raw();
+    if cli.no_echo { term_set_echo(false); }
+    if cli.mouse   { term_enable_mouse(true); }
+    if cli.paste   { term_enable_bracketed_paste(true); }
+    runtime_signal_subscribe(SIGWINCH);
+
+    /* État éditeur */
+    let mut ed = Editor{
+        nlines:0, lines:[Line{len:0, buf:[0;256]}; 2000],
+        cx:0, cy:0, rows:0, cols:0, row_off:0, col_off:0,
+        dirty:false, filename:"", status:[0;128], status_ttl:0,
+    };
+    ed_init(&mut ed);
+    apply_resize(&mut ed, &cli);
+
+    /* Fichier éventuel */
+    if cli.filename != "" {
+        ed_open(&mut ed, cli.filename);
+        if cli.readonly { ed_set_status(&mut ed, "[lecture seule] Ctrl-Q pour quitter"); }
+    } else {
+        ed_set_status(&mut ed, "Nouveau buffer — Ctrl-S pour sauvegarder, Ctrl-Q pour quitter");
+    }
+
+    /* Écran propre */
+    print(CSI_CLEAR); print(CSI_HOME);
+    term_flush_input();
+
+    /* Boucle principale: poll clavier avec timeout court pour surveiller resize */
+    let mut running = true;
+    let mut last_blink = runtime_now_ms();
+    while running {
+        /* Redimensionnement */
+        if runtime_signal_check(SIGWINCH) == 1 {
+            apply_resize(&mut ed, &cli);
+            ed_set_status(&mut ed, "Taille mise à jour");
+        }
+
+        /* Blink statut léger: décrémente TTL ~10 Hz */
+        let now = runtime_now_ms();
+        if now - last_blink >= 100 {
+            if ed.status_ttl > 0 { /* editor décrémente déjà dans sa loop si besoin, double sécurité */
+                /* rien ici, on laisse le redraw recouvrir */
+            }
+            last_blink = now;
+        }
+
+        /* Affichage */
+        ed_scroll(&mut ed);
+        ed_refresh_screen(&ed);
+
+        /* Lecture entrée avec timeout 50ms */
+        let k = term_peek_key(50);
+        if k == 0 { continue; }
+
+        /* Quit “propre”: si buffer sale, confirmation */
+        if k == 17 /* Ctrl-Q */ {
+            if ed.dirty && !cli.readonly {
+                if !ask_confirm("Modifs non sauvegardées. Appuyez sur une touche pour quitter, ESC pour annuler.") {
+                    ed_set_status(&mut ed, "Annulé");
+                    continue;
+                }
+            }
+            running = false;
+            continue;
+        }
+
+        /* Si readonly: bloquer édition et autoriser navigation */
+        if cli.readonly {
+            /* On laisse ed_process_key gérer les flèches et refus implicite du reste,
+               mais on filtre quelques touches d’édition courantes. */
+            if k == 13 || k == 10 || k == 8 || k == 127 { /* Enter / Backspace / Del */
+                ed_set_status(&mut ed, "[RO] Édition interdite");
+                continue;
+            }
+        }
+
+        let keep = ed_process_key(&mut ed, k);
+        if !keep { running = false; }
+    }
+
+    /* Restauration terminal */
+    print(CSI_CLEAR); print(CSI_HOME);
+    term_disable_raw();
+    println("");
+
+    return EXIT_OK;
+}

@@ -1,0 +1,274 @@
+/* ============================================================================
+   status.vitte — Gestion de barre de statut pour Platon Editor / CLI Vitte
+   - Message court, sévérité, TTL décrémenté, “sticky”, spinner, horloge
+   - Progression (k/n), formats prêts ASCII (sans alloc, no printf)
+   - API pont vers editor.vitte: status_apply_to_editor()
+   - Rendu direct ANSI optionnel: status_draw_ansi(rows, cols)
+   - Zéro allocation dynamique, buffers statiques bornés
+   ============================================================================ */
+
+const STATUS_CAP:  i32 = 128;
+const TIME_STRLEN: i32 = 16;
+
+/* Sévérités (inspirées UI) */
+const S_INFO: i32 = 0;
+const S_OK:   i32 = 1;
+const S_WARN: i32 = 2;
+const S_ERR:  i32 = 3;
+
+/* Spinner simple */
+const SPIN_FRAMES: [str; 4] = ["-", "\\", "|", "/"];
+
+/* ========================================================================== */
+
+struct Status {
+    buf:  [u8; STATUS_CAP], /* message actuel (ASCII) */
+    len:  i32,
+    ttl:  i32,              /* décrémenté par status_tick; 0 => invisible si !sticky */
+    sticky: bool,           /* si true, ignore ttl */
+    sev:  i32,              /* S_INFO..S_ERR */
+    spin_on: bool,
+    spin_idx: i32,          /* 0..3 */
+    show_clock: bool,       /* affiche HH:MM si dispo */
+    prog_cur: i32,          /* -1 = inactif */
+    prog_tot: i32,
+}
+
+/* ============================ Helpers ASCII =============================== */
+
+fn min(a:i32,b:i32)->i32{ if a<b {return a;} return b; }
+
+fn cstr_zero(buf:&mut [u8;STATUS_CAP]) { let mut i=0; while i<STATUS_CAP { buf[i as usize]=0; i=i+1; } }
+
+fn str_len(s:str)->i32 { return strlen_ascii(s); }  /* fourni par std */
+fn str_at_u8(s:str,i:i32)->u8 { return s[i as usize] as u8; }
+
+fn put_ascii(dst:&mut [u8;STATUS_CAP], off:i32, s:str)->i32 {
+    let cap = STATUS_CAP - 1;
+    let L = min(str_len(s), cap - off);
+    let mut i=0;
+    while i<L { dst[(off+i) as usize]=str_at_u8(s,i); i=i+1; }
+    return off+L;
+}
+
+fn put_char(dst:&mut [u8;STATUS_CAP], off:i32, c:u8)->i32 {
+    if off < STATUS_CAP-1 { dst[off as usize]=c; return off+1; }
+    return off;
+}
+
+fn i32_to_ascii(mut v:i32, out:&mut [u8;32])->i32{
+    if v==0 { out[0]=48; out[1]=0; return 1; }
+    let mut neg=false; if v<0 { neg=true; v=-v; }
+    let mut tmp:[u8;16]; let mut t=0;
+    while v>0 { tmp[t as usize]=48+((v%10) as u8); t=t+1; v=v/10; }
+    let mut k=0; if neg { out[k as usize]=45; k=k+1; }
+    let mut i=t-1; while i>=0 { out[k as usize]=tmp[i as usize]; k=k+1; i=i-1; }
+    out[k as usize]=0; return k;
+}
+
+/* HH:MM depuis runtime_time_hhmm() si dispo, sinon vide */
+fn write_clock(dst:&mut [u8;STATUS_CAP], off:i32)->i32{
+    let mut h=0; let mut m=0;
+    if runtime_time_hhmm(&mut h,&mut m)==0 { return off; }
+    let mut b:[u8;32]; let n1=i32_to_ascii(h,&mut b);
+    let mut i=0; while i<n1 { if off+i<STATUS_CAP-1 { dst[(off+i) as usize]=b[i as usize]; } i=i+1; }
+    let mut p = off+n1;
+    p = put_char(dst,p,':' as u8);
+    let mut b2:[u8;32]; let n2=i32_to_ascii(m,&mut b2);
+    if n2==1 { p = put_char(dst,p,'0' as u8); }
+    i=0; while i<n2 { if p+i<STATUS_CAP-1 { dst[(p+i) as usize]=b2[i as usize]; } i=i+1; }
+    return p+n2;
+}
+
+/* Barre de progression compacte: "[###..] 7/20" alignée à la fin si cols fourni */
+fn write_progress(dst:&mut [u8;STATUS_CAP], off:i32, cur:i32, tot:i32)->i32{
+    if tot<=0 || cur<0 { return off; }
+    let mut p=off;
+    p = put_char(dst,p,' ' as u8);
+    p = put_char(dst,p,'[' as u8);
+
+    let slots = 10; /* 10 cases */
+    let filled = if cur>=tot { slots } else { (cur*slots)/tot };
+    let mut i=0; while i<slots {
+        p = put_char(dst,p, if i<filled { '#' as u8 } else { '.' as u8 });
+        i=i+1;
+    }
+    p = put_char(dst,p,']' as u8);
+    p = put_char(dst,p,' ' as u8);
+
+    /* "cur/tot" */
+    let mut nb:[u8;32]; let n1=i32_to_ascii(cur,&mut nb);
+    let mut i1=0; while i1<n1 { p = put_char(dst,p,nb[i1 as usize]); i1=i1+1; }
+    p = put_char(dst,p,'/' as u8);
+    let n2=i32_to_ascii(tot,&mut nb);
+    i1=0; while i1<n2 { p = put_char(dst,p,nb[i1 as usize]); i1=i1+1; }
+
+    return p;
+}
+
+/* Encarts sévérité: "[!]" "[ok]" "[warn]" "[err]" */
+fn prefix_for_sev(sev:i32)->str{
+    if sev==S_OK { return "[ok]"; }
+    if sev==S_WARN { return "[warn]"; }
+    if sev==S_ERR { return "[err]"; }
+    return "[i]";
+}
+
+/* Spinner frame courant */
+fn spin_frame(idx:i32)->str { return SPIN_FRAMES[(idx & 3) as usize]; }
+
+/* =============================== API ===================================== */
+
+fn status_init(s:&mut Status) {
+    cstr_zero(&mut s.buf);
+    s.len=0; s.ttl=0; s.sticky=false; s.sev=S_INFO;
+    s.spin_on=false; s.spin_idx=0; s.show_clock=false;
+    s.prog_cur=-1; s.prog_tot=0;
+}
+
+fn status_clear(s:&mut Status) {
+    cstr_zero(&mut s.buf); s.len=0; s.ttl=0; s.sticky=false;
+    s.sev=S_INFO; s.spin_on=false; s.prog_cur=-1; s.prog_tot=0;
+}
+
+/* Définit un message avec TTL (en ticks de votre boucle). ttl<=0 => 0. */
+fn status_set(s:&mut Status, sev:i32, msg:str, ttl:i32) {
+    cstr_zero(&mut s.buf);
+    let mut p=0;
+    p = put_ascii(&mut s.buf, p, prefix_for_sev(sev));
+    p = put_char(&mut s.buf, p, ' ' as u8);
+    p = put_ascii(&mut s.buf, p, msg);
+    s.len = p; if s.len < STATUS_CAP { s.buf[s.len as usize]=0; }
+    s.sev = sev;
+    s.ttl = if ttl>0 { ttl } else { 0 };
+    s.sticky = false;
+}
+
+/* Idem mais “sticky”: reste affiché tant qu’on ne change pas. */
+fn status_set_sticky(s:&mut Status, sev:i32, msg:str) {
+    status_set(s, sev, msg, 0);
+    s.sticky = true;
+}
+
+/* Active/stoppe spinner. Si on passe on=true et pas de message, garde dernier. */
+fn status_spinner(s:&mut Status, on:bool) {
+    s.spin_on = on;
+    if !on { s.spin_idx = 0; }
+}
+
+/* Active l’horloge HH:MM en suffixe. */
+fn status_clock(s:&mut Status, on:bool) { s.show_clock = on; }
+
+/* Déclare une progression (cur/tot). cur<0 désactive. */
+fn status_progress(s:&mut Status, cur:i32, tot:i32) {
+    if cur<0 || tot<=0 { s.prog_cur=-1; s.prog_tot=0; return; }
+    s.prog_cur = cur; s.prog_tot = tot;
+}
+
+/* Tick périodique: décrémente TTL et avance spinner. */
+fn status_tick(s:&mut Status) {
+    if s.spin_on { s.spin_idx = (s.spin_idx + 1) & 3; }
+    if !s.sticky && s.ttl>0 { s.ttl = s.ttl - 1; }
+}
+
+/* Construit dans out une ligne prête à afficher, tenant dans cols caractères.
+   Retourne la longueur écrite. S’il n’y a rien à afficher, retourne 0. */
+fn status_compose_line(s:&Status, cols:i32, out:&mut [u8; STATUS_CAP])->i32{
+    if !s.sticky && s.ttl==0 && s.len==0 { out[0]=0; return 0; }
+    let mut p=0;
+
+    /* Spinner à gauche si actif */
+    if s.spin_on {
+        p = put_ascii(out, p, spin_frame(s.spin_idx));
+        p = put_char(out, p, ' ' as u8);
+    }
+
+    /* Message */
+    let mut i=0;
+    while i<s.len && p<cols-1 && p<STATUS_CAP-1 {
+        out[p as usize] = s.buf[i as usize]; p=p+1; i=i+1;
+    }
+
+    /* Progrès */
+    if s.prog_cur>=0 && p<STATUS_CAP-8 {
+        p = write_progress(out, p, s.prog_cur, s.prog_tot);
+    }
+
+    /* Horloge à droite si demandé et si place */
+    if s.show_clock {
+        let mut tmp:[u8;STATUS_CAP];
+        let mut k=0;
+        k = put_char(&mut tmp, k, ' ' as u8);
+        k = put_char(&mut tmp, k, ' ' as u8);
+        k = write_clock(&mut tmp, k);
+        /* Essaie d’ajouter si place */
+        let need = k;
+        if p+need < min(STATUS_CAP-1, cols-1) {
+            let mut j=0; while j<need { out[(p+j) as usize]=tmp[j as usize]; j=j+1; }
+            p = p + need;
+        }
+    }
+
+    if p<STATUS_CAP { out[p as usize]=0; }
+    return p;
+}
+
+/* ============================== Rendu ANSI ================================ */
+/* Efface la ligne status et écrit le contenu à row (1-based).               */
+
+fn status_draw_ansi(s:&Status, row:i32, cols:i32) {
+    let mut line:[u8; STATUS_CAP];
+    let n = status_compose_line(s, cols, &mut line);
+    ansi_move(row, 1);
+    /* style inverse simple pour barre */
+    print("\x1b[7m");
+    runtime_term_write(&line, n);
+    print("\x1b[0m");
+    ansi_clear("EOL");
+}
+
+/* ========================= Pont vers editor.vitte ========================= */
+/* Copie l’état du Status dans l’Editor (e.status/e.status_ttl).             */
+
+struct Editor { /* projection minimale */
+    status: [u8; 128],
+    status_ttl: i32,
+}
+
+fn status_apply_to_editor(s:&Status, e:&mut Editor, cols:i32) {
+    let mut line:[u8; STATUS_CAP];
+    let n = status_compose_line(s, cols, &mut line);
+    let copy = min(n, 127);
+    let mut i=0; while i<copy { e.status[i as usize]=line[i as usize]; i=i+1; }
+    e.status[copy as usize]=0;
+    /* Si sticky on garde un TTL haut, sinon reflète s.ttl */
+    e.status_ttl = if s.sticky { 60 } else { s.ttl };
+}
+
+/* =============================== Tests (off) ============================== */
+/*
+fn println(_s:str){}
+fn println_i32(_x:i32){}
+fn main()->i32{
+    let mut st=Status{
+        buf:[0;STATUS_CAP],len:0,ttl:30,sticky:false,sev:S_INFO,
+        spin_on:true,spin_idx:0,show_clock:true,prog_cur:3,prog_tot:10
+    };
+    status_init(&mut st);
+    status_set(&mut st,S_INFO,"Chargement du projet…",60);
+    status_spinner(&mut st,true);
+    status_progress(&mut st,3,10);
+    let mut ln:[u8;STATUS_CAP];
+    let _ = status_compose_line(&st, 80, &mut ln);
+    return 0;
+}
+*/
+
+/* ============================= Hooks runtime ============================== */
+
+fn runtime_term_write(_buf:&[u8;STATUS_CAP], _n:i32)->i32{ return 0; }
+fn runtime_time_hhmm(_h:&mut i32,_m:&mut i32)->i32{ return 0; } /* 1 si ok */
+fn strlen_ascii(_s:str)->i32{ return 0; }
+fn ansi_move(_r:i32,_c:i32){}
+fn ansi_clear(_scope:str){}
+fn print(_s:str){}

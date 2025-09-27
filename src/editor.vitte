@@ -1,0 +1,653 @@
+/* ============================================================================
+   editor.vitte — Éditeur texte terminal minimal, monofichier, sans alloc dyn.
+   Cœur: tampon lignes fixes, curseur, viewport, recherche, open/save.
+   Raccourcis: Ctrl-Q quit, Ctrl-S save, Ctrl-F find, Ctrl-G goto line,
+               flèches/ZQSD déplac., Enter nouvelle ligne, Backspace, Tab.
+   Dépendances std attendues: fs_read_all, fs_write_all, term_read_key,
+                              term_size, term_enable_raw, term_disable_raw,
+                              ansi_clear, ansi_move, ansi_hide, ansi_show,
+                              print, println.
+   Limites: MAX_LINES * MAX_COLS, UTF-8 non combiné (octets bruts).
+   ============================================================================ */
+
+const MAX_LINES: i32 = 2000;
+const MAX_COLS:  i32 = 256;
+const FILE_MAX:  i32 = 1_000_000;
+
+const KEY_ESC:   i32 = 27;
+const KEY_BS:    i32 = 8;      /* Backspace */
+const KEY_DEL:   i32 = 127;    /* Delete */
+const KEY_TAB:   i32 = 9;
+const KEY_CR:    i32 = 13;     /* Enter */
+const KEY_LF:    i32 = 10;
+
+const CTRL_Q:    i32 = 17;     /* ^Q */
+const CTRL_S:    i32 = 19;     /* ^S */
+const CTRL_F:    i32 = 6;      /* ^F */
+const CTRL_G:    i32 = 7;      /* ^G */
+
+/* Touches flèches (retournées par term_read_key) */
+const K_UP:    i32 = 1001;
+const K_DOWN:  i32 = 1002;
+const K_LEFT:  i32 = 1003;
+const K_RIGHT: i32 = 1004;
+
+/* ---------------------- Modèles de données -------------------------------- */
+
+struct Line {
+    len: i32,
+    buf: [u8; MAX_COLS],
+}
+
+struct Editor {
+    /* Buffer */
+    nlines: i32,
+    lines:  [Line; MAX_LINES],
+
+    /* Curseur (dans le document) */
+    cx: i32,  /* colonne (0..len) */
+    cy: i32,  /* ligne    (0..nlines-1) */
+
+    /* Viewport terminal */
+    rows: i32,
+    cols: i32,
+    row_off: i32, /* première ligne affichée */
+    col_off: i32, /* première colonne affichée */
+
+    /* Fichier */
+    dirty: bool,
+    filename: str,     /* vide si nouveau */
+    status: [u8; 128], /* message court */
+    status_ttl: i32,   /* nombre de rafraîchissements */
+}
+
+/* ---------------------- Helpers ASCII/strings ----------------------------- */
+
+fn min(a: i32, b: i32) -> i32 { if a < b { return a; } return b; }
+fn max(a: i32, b: i32) -> i32 { if a > b { return a; } return b; }
+
+fn is_printable(b: u8) -> bool { return b >= 32 && b != 127; }
+
+/* Convertit un entier décimal en ASCII dans dest. Retourne la longueur. */
+fn i32_to_ascii(mut v: i32, out: &mut [u8; 32]) -> i32 {
+    if v == 0 { out[0]=48; return 1; }
+    let mut neg=false;
+    if v < 0 { neg=true; v=-v; }
+    let mut tmp:[u8;16]; let mut t=0;
+    while v>0 { tmp[t as usize] = 48 + (v % 10) as u8; t=t+1; v=v/10; }
+    let mut k=0;
+    if neg { out[k]=45; k=k+1; }
+    let mut i=t-1;
+    while i>=0 { out[k]=tmp[i as usize]; k=k+1; i=i-1; }
+    return k;
+}
+
+fn put_ascii(buf: &[u8; 128], n: i32) { for i in 0..n { putc(buf[i as usize]); } }
+fn putc(b: u8) { print(byte_to_str(b)); } /* stub: imprime 1 octet ASCII */
+fn byte_to_str(b: u8) -> str {
+    /* Runtime peut fournir une API plus efficace. */
+    if b==10 { return "\n"; }
+    if b==13 { return "\r"; }
+    if b==9  { return "\t"; }
+    /* Map basique pour visibles: */
+    if b==32 { return " "; }
+    /* Fallback: un seul char par valeur commune */
+    if b>=33 && b<=126 {
+        /* Cette impl suppose une primitive char_from_u8 -> str d’un char. */
+        return char1(b);
+    }
+    return "?";
+}
+
+/* ---------------------- Gestion des lignes -------------------------------- */
+
+fn line_clear(l: &mut Line) { l.len = 0; for i in 0..MAX_COLS { l.buf[i]=0; } }
+
+fn line_insert_char(l: &mut Line, pos: i32, ch: u8) {
+    if l.len >= MAX_COLS-1 { return; }
+    let p = max(0, min(pos, l.len));
+    /* Décale droite */
+    let mut i = l.len;
+    while i > p {
+        l.buf[i as usize] = l.buf[(i-1) as usize];
+        i = i - 1;
+    }
+    l.buf[p as usize] = ch;
+    l.len = l.len + 1;
+}
+
+fn line_delete_char(l: &mut Line, pos: i32) {
+    if l.len <= 0 { return; }
+    if pos < 0 || pos >= l.len { return; }
+    let mut i = pos;
+    while i < l.len - 1 {
+        l.buf[i as usize] = l.buf[(i+1) as usize];
+        i = i + 1;
+    }
+    l.len = l.len - 1;
+    l.buf[l.len as usize] = 0;
+}
+
+fn line_append_line(dst: &mut Line, src: &Line) {
+    let cap = MAX_COLS - 1;
+    let can = min(src.len, cap - dst.len);
+    let mut i=0;
+    while i<can {
+        dst.buf[(dst.len+i) as usize] = src.buf[i as usize];
+        i=i+1;
+    }
+    dst.len = dst.len + can;
+}
+
+/* ---------------------- Éditeur: init, I/O fichiers ----------------------- */
+
+fn ed_init(e: &mut Editor) {
+    e.nlines = 1;
+    for i in 0..MAX_LINES { line_clear(&mut e.lines[i as usize]); }
+    e.lines[0].len = 0;
+
+    let (rh, cw) = term_size();
+    e.rows = rh; e.cols = cw;
+    e.cx=0; e.cy=0; e.row_off=0; e.col_off=0;
+
+    e.dirty=false;
+    e.filename="";
+    for i in 0..128 { e.status[i]=0; }
+    e.status_ttl=0;
+}
+
+fn ed_open(e: &mut Editor, path: str) {
+    let mut file: [u8; FILE_MAX];
+    let n = fs_read_all(path, &mut file);
+    if n <= 0 {
+        ed_set_status(e, "Nouveau fichier");
+        e.filename = path;
+        return;
+    }
+    /* Réinitialise */
+    e.nlines = 0;
+    for i in 0..MAX_LINES { line_clear(&mut e.lines[i as usize]); }
+    let mut i=0; let mut cur=0;
+    while i<n && cur<MAX_LINES {
+        if file[i as usize] == 10 /* LF */ {
+            e.lines[cur as usize].len = min(MAX_COLS-1, e.lines[cur as usize].len);
+            cur=cur+1;
+        } else if file[i as usize] == 13 {
+            /* ignore CR */
+        } else {
+            if e.lines[cur as usize].len < MAX_COLS-1 {
+                let k=e.lines[cur as usize].len;
+                e.lines[cur as usize].buf[k as usize] = file[i as usize];
+                e.lines[cur as usize].len = k+1;
+            }
+        }
+        i=i+1;
+    }
+    e.nlines = max(1, cur+1);
+    e.filename = path;
+    e.dirty=false;
+    ed_set_status(e, "Fichier chargé");
+}
+
+fn ed_save(e: &mut Editor) {
+    if e.filename == "" {
+        ed_set_status(e, "Nom de fichier requis: :w <name> ou Ctrl-S après set");
+        return;
+    }
+    let mut out: [u8; FILE_MAX];
+    let mut k=0;
+    for y in 0..e.nlines {
+        let l = &e.lines[y as usize];
+        for i in 0..l.len {
+            if k < FILE_MAX { out[k as usize] = l.buf[i as usize]; k=k+1; }
+        }
+        if k < FILE_MAX { out[k as usize] = 10; k=k+1; } /* LF */
+    }
+    let wrote = fs_write_all(e.filename, &out, k);
+    if wrote == k {
+        e.dirty=false;
+        ed_set_status(e, "Sauvegardé");
+    } else {
+        ed_set_status(e, "Erreur sauvegarde");
+    }
+}
+
+/* ---------------------- Éditeur: statut, redraw --------------------------- */
+
+fn ed_set_status(e: &mut Editor, msg: str) {
+    /* Copie msg ASCII vers status */
+    let mut i=0;
+    while i<127 && i < str_len(msg) {
+        e.status[i as usize] = str_at_u8(msg, i);
+        i=i+1;
+    }
+    e.status[i as usize]=0;
+    e.status_ttl = 60; /* ~seconds si 60 FPS, selon loop */
+}
+
+fn ed_draw_rows(e: &Editor) {
+    for y in 0..(e.rows-2) {
+        let file_y = e.row_off + y;
+        ansi_move(1 + y, 1);
+        if file_y >= e.nlines {
+            print("~");
+            continue;
+        }
+        let l = &e.lines[file_y as usize];
+        /* fenêtre horizontale */
+        let start = min(e.col_off, l.len);
+        let mut x=0;
+        while x < e.cols {
+            let ix = start + x;
+            if ix >= l.len { break; }
+            putc(l.buf[ix as usize]);
+            x=x+1;
+        }
+        /* clear reste */
+        let rem = e.cols - x;
+        if rem > 0 { ansi_clear("EOL"); }
+    }
+}
+
+fn ed_draw_status(e: &Editor) {
+    /* Barre statut sur avant-dernière ligne */
+    ansi_move(e.rows-1, 1);
+    /* Inverse vidéo selon votre ANSI util */
+    print("\x1b[7m");
+    let name = if e.filename != "" { e.filename } else { "[sans titre]" };
+    let dirty = if e.dirty { " + " } else { "   " };
+    let mut info: [u8;128];
+    /* Compose: "filename - LxCx  nlines   [dirty]" */
+    let n1 = str_copy_ascii(name, &mut info, 0, 64);
+    let n2 = str_copy_ascii("  L", &mut info, n1, 128);
+    let mut num:[u8;32]; let mut w=0;
+    w = i32_to_ascii(e.cy+1, &mut num); copy_bytes(&mut info, n1+n2, &num, w);
+    let n3 = n2 + w;
+    let n4 = str_copy_ascii(" C", &mut info, n1+n3, 128);
+    w = i32_to_ascii(e.cx+1, &mut num); copy_bytes(&mut info, n1+n3+n4, &num, w);
+    let n5 = n4 + w;
+    let _ = str_copy_ascii(dirty, &mut info, n1+n3+n4+w, 128);
+    put_ascii(&info, min(128, n1+n3+n5+3));
+    /* RAZ style */
+    print("\x1b[0m");
+    ansi_clear("EOL");
+
+    /* Ligne message courte */
+    ansi_move(e.rows, 1);
+    if e.status_ttl > 0 {
+        let mut i=0;
+        while i<128 && e.status[i as usize]!=0 { putc(e.status[i as usize]); i=i+1; }
+        ansi_clear("EOL");
+    } else {
+        ansi_clear("EOL");
+    }
+}
+
+fn ed_refresh_screen(e: &Editor) {
+    ansi_hide();
+    ansi_move(1,1);
+    ed_draw_rows(e);
+    ed_draw_status(e);
+    /* Place curseur dans viewport */
+    let rx = e.cx - e.col_off;
+    let ry = e.cy - e.row_off;
+    if ry >= 0 && ry < e.rows-2 && rx >= 0 && rx < e.cols {
+        ansi_move(1 + ry, 1 + rx);
+    }
+    ansi_show();
+}
+
+/* ---------------------- Mouvement curseur et scroll ----------------------- */
+
+fn ed_scroll(e: &mut Editor) {
+    if e.cy < e.row_off { e.row_off = e.cy; }
+    if e.cy >= e.row_off + (e.rows-2) { e.row_off = e.cy - (e.rows-3); }
+    if e.cx < e.col_off { e.col_off = e.cx; }
+    if e.cx >= e.col_off + e.cols { e.col_off = e.cx - (e.cols-1); }
+}
+
+fn ed_move_cursor(e: &mut Editor, key: i32) {
+    let mut l = &e.lines[e.cy as usize];
+    if key == K_LEFT {
+        if e.cx > 0 { e.cx=e.cx-1; }
+        else if e.cy > 0 { e.cy=e.cy-1; e.cx=e.lines[e.cy as usize].len; }
+    } else if key == K_RIGHT {
+        if e.cx < l.len { e.cx=e.cx+1; }
+        else if e.cy < e.nlines-1 { e.cy=e.cy+1; e.cx=0; }
+    } else if key == K_UP {
+        if e.cy > 0 { e.cy=e.cy-1; }
+    } else if key == K_DOWN {
+        if e.cy < e.nlines-1 { e.cy=e.cy+1; }
+    }
+    /* Clamp sur longueur ligne courante */
+    l = &e.lines[e.cy as usize];
+    if e.cx > l.len { e.cx = l.len; }
+}
+
+/* ---------------------- Édition: insertion, suppression ------------------- */
+
+fn ed_insert_char(e: &mut Editor, ch: u8) {
+    if !is_printable(ch) && ch != KEY_TAB { return; }
+    let l = &mut e.lines[e.cy as usize];
+    if ch == KEY_TAB {
+        /* 4 espaces */
+        line_insert_char(l, e.cx, ' ' as u8); e.cx=e.cx+1;
+        line_insert_char(l, e.cx, ' ' as u8); e.cx=e.cx+1;
+        line_insert_char(l, e.cx, ' ' as u8); e.cx=e.cx+1;
+        line_insert_char(l, e.cx, ' ' as u8); e.cx=e.cx+1;
+    } else {
+        line_insert_char(l, e.cx, ch);
+        e.cx=e.cx+1;
+    }
+    e.dirty=true;
+}
+
+fn ed_backspace(e: &mut Editor) {
+    if e.cx > 0 {
+        let l = &mut e.lines[e.cy as usize];
+        line_delete_char(l, e.cx-1);
+        e.cx = e.cx - 1;
+        e.dirty=true;
+        return;
+    }
+    if e.cy > 0 {
+        /* Joindre avec ligne précédente */
+        let prev = e.cy-1;
+        let cur  = e.cy;
+        let len_prev = e.lines[prev as usize].len;
+        line_append_line(&mut e.lines[prev as usize], &e.lines[cur as usize]);
+        /* Décale toutes les lignes vers le haut */
+        let mut i=cur;
+        while i < e.nlines-1 {
+            e.lines[i as usize] = e.lines[(i+1) as usize];
+            i=i+1;
+        }
+        /* Vide dernière */
+        line_clear(&mut e.lines[(e.nlines-1) as usize]);
+        e.nlines = e.nlines - 1;
+        e.cy = prev; e.cx = len_prev;
+        e.dirty=true;
+    }
+}
+
+fn ed_enter(e: &mut Editor) {
+    if e.nlines >= MAX_LINES { ed_set_status(e, "Limite lignes"); return; }
+    /* Coupe la ligne courante à cx, le reste va à la ligne suivante */
+    let cur = e.cy;
+    let cx  = e.cx;
+    let mut tail = Line{ len:0, buf:[0;MAX_COLS] };
+    let l = &mut e.lines[cur as usize];
+    let rest = l.len - cx;
+    let mut i=0;
+    while i < rest && i < MAX_COLS-1 {
+        tail.buf[i as usize] = l.buf[(cx+i) as usize];
+        i=i+1;
+    }
+    tail.len = i;
+    l.len = cx;
+
+    /* Insère nouvelle ligne en dessous */
+    let mut j = e.nlines;
+    while j > cur+1 {
+        e.lines[j as usize] = e.lines[(j-1) as usize];
+        j=j-1;
+    }
+    e.lines[(cur+1) as usize] = tail;
+    e.nlines = e.nlines + 1;
+
+    e.cy = cur+1; e.cx = 0;
+    e.dirty=true;
+}
+
+/* ---------------------- Recherche simple ---------------------------------- */
+
+fn ed_find(e: &mut Editor) {
+    ed_set_status(e, "/chercher: tape texte puis Enter, Esc pour annuler");
+    ed_refresh_screen(e);
+    let mut query:[u8;64]; let mut qlen=0;
+    loop {
+        let k = term_read_key();
+        if k == KEY_ESC { ed_set_status(e, "Recherche annulée"); return; }
+        if k == KEY_CR || k == KEY_LF { break; }
+        if k == KEY_DEL || k == KEY_BS {
+            if qlen>0 { qlen=qlen-1; query[qlen as usize]=0; }
+        } else if k>=32 && k<127 && qlen<63 {
+            query[qlen as usize] = k as u8; qlen=qlen+1;
+        }
+        /* Echo dans barre statut */
+        let mut msg:[u8;128]; let n1 = str_copy_ascii("/chercher: ", &mut msg, 0, 128);
+        copy_bytes(&mut msg, n1, &query, qlen);
+        put_status_now(&msg, n1+qlen);
+    }
+    if qlen==0 { ed_set_status(e, "Vide"); return; }
+    /* Recherche depuis ligne courante */
+    let mut y=e.cy;
+    loop {
+        let l=&e.lines[y as usize];
+        let pos = find_subseq(&l.buf, l.len, &query, qlen);
+        if pos>=0 {
+            e.cy = y; e.cx = pos;
+            ed_set_status(e, "Trouvé");
+            ed_scroll(e);
+            return;
+        }
+        y = y+1;
+        if y >= e.nlines { ed_set_status(e, "Introuvable"); return; }
+    }
+}
+
+fn find_subseq(h: &[u8;MAX_COLS], hlen: i32, n: &[u8;64], nlen: i32) -> i32 {
+    if nlen==0 || hlen==0 || nlen>hlen { return -1; }
+    let last = hlen - nlen;
+    let mut i=0;
+    while i<=last {
+        let mut k=0;
+        while k<nlen && h[(i+k) as usize]==n[k as usize] { k=k+1; }
+        if k==nlen { return i; }
+        i=i+1;
+    }
+    return -1;
+}
+
+/* ---------------------- Commandes prompt simples -------------------------- */
+
+fn ed_prompt_set_filename(e: &mut Editor) {
+    ed_set_status(e, ":w nom_de_fichier > ");
+    ed_refresh_screen(e);
+    let mut name:[u8;64]; let mut n=0;
+    loop {
+        let k=term_read_key();
+        if k==KEY_CR || k==KEY_LF { break; }
+        if k==KEY_ESC { ed_set_status(e, "Annulé"); return; }
+        if (k==KEY_DEL || k==KEY_BS) && n>0 { n=n-1; name[n as usize]=0; continue; }
+        if k>=32 && k<127 && n<63 { name[n as usize]=k as u8; n=n+1; }
+        put_status_now(&name, n);
+    }
+    if n>0 {
+        e.filename = ascii_slice_to_str(&name, n);
+        ed_set_status(e, "Nom mis à jour");
+    } else {
+        ed_set_status(e, "Nom vide");
+    }
+}
+
+/* Affiche immédiatement un message brut dans la barre status */
+fn put_status_now(msg: &[u8;128], n: i32) {
+    let (rows, _) = term_size();
+    ansi_move(rows-1, 1);
+    print("\x1b[7m");
+    for i in 0..n { putc(msg[i as usize]); }
+    print("\x1b[0m");
+    ansi_clear("EOL");
+}
+
+/* ---------------------- Boucle principale -------------------------------- */
+
+fn ed_process_key(e: &mut Editor, k: i32) -> bool {
+    if k == CTRL_Q {
+        if e.dirty {
+            ed_set_status(e, "Modifs non sauvegardées. Ctrl-Q encore pour quitter.");
+            e.dirty=false; /* simple confirmation en 2 temps */
+            return true;
+        }
+        return false; /* quitter */
+    }
+    if k == CTRL_S {
+        if e.filename == "" { ed_prompt_set_filename(e); }
+        ed_save(e);
+        return true;
+    }
+    if k == CTRL_F { ed_find(e); return true; }
+    if k == CTRL_G { ed_goto_line(e); return true; }
+
+    if k == K_UP || k==K_DOWN || k==K_LEFT || k==K_RIGHT {
+        ed_move_cursor(e, k); ed_scroll(e); return true;
+    }
+    if k == KEY_CR || k == KEY_LF { ed_enter(e); ed_scroll(e); return true; }
+    if k == KEY_DEL { ed_delete_at(e); ed_scroll(e); return true; }
+    if k == KEY_BS  { ed_backspace(e); ed_scroll(e); return true; }
+
+    /* Insertion */
+    if k>=32 && k<=126 || k==KEY_TAB {
+        ed_insert_char(e, k as u8);
+        ed_scroll(e);
+        return true;
+    }
+    return true;
+}
+
+fn ed_delete_at(e: &mut Editor) {
+    let l = &mut e.lines[e.cy as usize];
+    if e.cx < l.len {
+        line_delete_char(l, e.cx);
+        e.dirty=true;
+    } else if e.cy < e.nlines-1 {
+        /* Joindre ligne suivante */
+        let next = e.cy+1;
+        line_append_line(l, &e.lines[next as usize]);
+        /* Décale */
+        let mut i=next;
+        while i < e.nlines-1 {
+            e.lines[i as usize] = e.lines[(i+1) as usize];
+            i=i+1;
+        }
+        line_clear(&mut e.lines[(e.nlines-1) as usize]);
+        e.nlines=e.nlines-1;
+        e.dirty=true;
+    }
+}
+
+fn ed_goto_line(e: &mut Editor) {
+    ed_set_status(e, ":goto numéro > ");
+    ed_refresh_screen(e);
+    let mut num:[u8;32]; let mut n=0;
+    loop {
+        let k=term_read_key();
+        if k==KEY_ESC { ed_set_status(e, "Annulé"); return; }
+        if k==KEY_CR || k==KEY_LF { break; }
+        if (k==KEY_BS || k==KEY_DEL) && n>0 { n=n-1; num[n as usize]=0; continue; }
+        if k>=48 && k<=57 && n<31 { num[n as usize]=k as u8; n=n+1; }
+        put_status_now(&num, n);
+    }
+    let line = ascii_to_i32(&num, n);
+    if line<=0 { ed_set_status(e, "Invalide"); return; }
+    let target = min(e.nlines-1, line-1);
+    e.cy=target; e.cx=0; ed_scroll(e); ed_set_status(e, "Aller");
+}
+
+/* ---------------------- Utils ASCII <-> i32 ------------------------------ */
+
+fn ascii_to_i32(buf: &[u8;32], n: i32) -> i32 {
+    if n<=0 { return 0; }
+    let mut v=0;
+    let mut i=0;
+    while i<n {
+        let d = buf[i as usize] - 48;
+        if d>9 { return 0; }
+        v = v*10 + (d as i32);
+        i=i+1;
+    }
+    return v;
+}
+
+fn copy_bytes(dst: &mut [u8;128], off: i32, src: &[u8;32], n: i32) {
+    let mut i=0;
+    while i<n && off+i<128 {
+        dst[(off+i) as usize] = src[i as usize];
+        i=i+1;
+    }
+}
+
+fn str_len(s: str) -> i32 { return strlen_ascii(s); }        /* stub std */
+fn str_at_u8(s: str, i: i32) -> u8 { return s[i as usize] as u8; } /* ASCII */
+fn str_copy_ascii(s: str, dst: &mut [u8;128], off: i32, cap: i32) -> i32 {
+    let L = min(str_len(s), cap-off);
+    let mut i=0; while i<L { dst[(off+i) as usize] = str_at_u8(s, i); i=i+1; }
+    return L;
+}
+fn ascii_slice_to_str(buf: &[u8;64], n: i32) -> str { return bytes_to_str(buf, n); }
+
+/* ---------------------- Main --------------------------------------------- */
+
+fn main() -> i32 {
+    term_enable_raw();
+    let mut ed = Editor{
+        nlines:0, lines:[Line{len:0, buf:[0;MAX_COLS]}; MAX_LINES],
+        cx:0, cy:0, rows:0, cols:0, row_off:0, col_off:0,
+        dirty:false, filename:"", status:[0;128], status_ttl:0,
+    };
+    ed_init(&mut ed);
+
+    /* Option: ouvrir fichier passé par la runtime si dispo */
+    let arg = runtime_arg0(); /* "" si absent */
+    if arg != "" { ed_open(&mut ed, arg); }
+    else { ed_set_status(&mut ed, "Ctrl-S pour sauver, Ctrl-Q pour quitter"); }
+
+    loop {
+        ed_scroll(&mut ed);
+        ed_refresh_screen(&ed);
+        if ed.status_ttl>0 { ed.status_ttl = ed.status_ttl - 1; }
+
+        let k = term_read_key();
+        let keep = ed_process_key(&mut ed, k);
+        if !keep { break; }
+    }
+
+    ansi_move(ed.rows, 1);
+    ansi_clear("EOL");
+    term_disable_raw();
+    println("");
+    return 0;
+}
+
+/* ---------------------- Stubs runtime/ANSI/FS attendus --------------------
+   Mappez ces fonctions vers votre std/cli/ansi.vitte et std/fs.* si présents.
+--------------------------------------------------------------------------- */
+
+/* Terminal */
+fn term_enable_raw() { }
+fn term_disable_raw() { }
+fn term_read_key() -> i32 { return 0; }           /* renvoie codes ci-dessus */
+fn term_size() -> (i32, i32) { return (24, 80); } /* rows, cols */
+
+/* ANSI */
+fn ansi_clear(scope: str) { /* "EOL" pour effacer fin de ligne */ }
+fn ansi_move(r: i32, c: i32) { /* CSI r;cH */ }
+fn ansi_hide() { }
+fn ansi_show() { }
+
+/* Fichiers */
+fn fs_read_all(path: str, out: &mut [u8; FILE_MAX]) -> i32 { return 0; }
+fn fs_write_all(path: str, data: &[u8; FILE_MAX], n: i32) -> i32 { return 0; }
+
+/* Strings/bytes */
+fn bytes_to_str(_buf: &[u8;64], _n: i32) -> str { return ""; }
+fn char1(_b: u8) -> str { return "?"; }
+fn strlen_ascii(_s: str) -> i32 { return 0; }
+
+/* I/O texte */
+fn print(_s: str) { }
+fn println(_s: str) { }
+
+/* Args */
+fn runtime_arg0() -> str { return ""; }
