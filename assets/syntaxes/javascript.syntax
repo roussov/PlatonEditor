@@ -1,0 +1,139 @@
+# javascript.syntax — Coloration JavaScript ES2023 (+ JSX basique)
+# Encodage: UTF-8
+
+[meta]
+name = JavaScript
+version = 1.0
+file_extensions = .js,.mjs,.cjs,.jsx
+case_sensitive = true
+
+[colors]
+comment = comment
+string  = string
+number  = number
+keyword = keyword
+type    = type
+storage = storage
+macro   = macro
+preproc = preproc
+func    = function
+const   = constant
+op      = operator
+punct   = punctuation
+invalid = invalid
+todo    = todo
+
+[states]
+initial = code
+
+[state:code]
+# Commentaires
+rule.comment.line = (?P<comment>//[^\n]*) -> comment
+rule.comment.blk  = (?P<comment>/\*[^*]*\*+(?:[^/*][^*]*\*+)*/)s -> comment
+rule.todo         = (?P<todo>//\s*(?:TODO|FIXME|BUG|HACK|NOTE)\b[^\n]*) -> todo
+
+# Chaînes et template literals
+push.str.dq  = " -> string_dq
+push.str.sq  = ' -> string_sq
+push.tpl     = ` -> template
+
+# Nombres
+rule.num.bin   = (?P<number>\b0[bB][01](?:_?[01])*\b) -> number
+rule.num.oct   = (?P<number>\b0[oO][0-7](?:_?[0-7])*\b) -> number
+rule.num.hex   = (?P<number>\b0[xX][0-9A-Fa-f](?:_?[0-9A-Fa-f])*\b) -> number
+rule.num.dec   = (?P<number>\b\d(?:_?\d)*(?:\.(?:\d(?:_?\d)*)?)?(?:[eE][+-]?\d(?:_?\d)*)?\b) -> number
+rule.num.nan   = (?P<const>\b(?:NaN|Infinity)\b) -> constant
+
+# Mots-clés JavaScript
+rule.keyword = (?P<keyword>\b(?:async|await|break|case|catch|class|const|continue|debugger|default|delete|do|else|enum|export|extends|false|finally|for|from|function|get|if|implements|import|in|instanceof|interface|let|new|null|of|package|private|protected|public|return|set|static|super|switch|this|throw|true|try|typeof|undefined|var|void|while|with|yield)\b) -> keyword
+
+# Types intégrés
+rule.type = (?P<type>\b(?:string|number|boolean|symbol|bigint|any|unknown|never|object|Array|Map|Set|WeakMap|WeakSet|Promise|Function|RegExp|Date|Error|JSON|Math)\b) -> type
+
+# Identifiants de fonction
+rule.func.call = (?P<func>\b[A-Za-z_$][A-Za-z0-9_$]*)(?=\s*\() -> function
+
+# Classes
+rule.kw.decl = (?P<keyword>\b(?:class|constructor)\b) -> keyword
+
+# Opérateurs et ponctuation
+rule.ops   = (?P<op>(\+\+|--|=>|===|!==|==|!=|<=|>=|&&|\|\||\?\?|<<|>>|>>>|\+=|-=|\*=|/=|%=|&=|\|=|\^=|<<=|>>=|>>>=|\?\.|[+\-*/%&|\^~!<>?:=\.])) -> operator
+rule.punct = (?P<punct>[{}$begin:math:display$$end:math:display$();,]) -> punctuation
+
+# Décorateurs (expérimental / TS)
+rule.decorator = (?P<macro>@[A-Za-z_][A-Za-z0-9_\.]*) -> macro
+
+# JSX
+push.jsx.tag = <(?=[A-Za-z]) -> jsx_tag
+
+# ===================== CHAÎNES ======================
+
+[state:string_dq]
+rule.escape = (?P<string>\\.) -> string
+rule.end    = " -> pop
+rule.body   = (?P<string>[^"\\]+) -> string
+rule.nl     = (?P<invalid>\n) -> invalid
+
+[state:string_sq]
+rule.escape = (?P<string>\\.) -> string
+rule.end    = ' -> pop
+rule.body   = (?P<string>[^'\\]+) -> string
+rule.nl     = (?P<invalid>\n) -> invalid
+
+[state:template]
+push.expr = \$\{ -> expr
+rule.escape = (?P<string>\\`) -> string
+rule.end    = ` -> pop
+rule.body   = (?P<string>[^`\\$]+|\\.) -> string
+
+[state:expr]
+rule.end    = \} -> pop
+rule.string = " -> string_dq
+rule.string = ' -> string_sq
+rule.tpl    = ` -> template
+rule.num    = (?P<number>\b\d(?:_?\d)*(?:\.(?:\d(?:_?\d)*)?)?(?:[eE][+-]?\d(?:_?\d)*)?\b) -> number
+rule.id     = (?P<const>\b[A-Za-z_$][A-Za-z0-9_$]*\b) -> constant
+rule.op     = (?P<op>[+\-*/%&|\^~!<>?:=\.]) -> operator
+rule.punc   = (?P<punct>[{}$begin:math:display$$end:math:display$();,]) -> punctuation
+
+# ===================== JSX ======================
+
+[state:jsx_tag]
+rule.endclose = (?P<punct></)(?=[A-Za-z]) -> punctuation
+rule.tagname  = (?P<keyword>[A-Za-z][A-Za-z0-9\.:-]*) -> keyword
+rule.ws       = \s+ ->
+rule.selfend  = (?P<punct>/>) -> punctuation,pop
+rule.end      = (?P<punct>>) -> punctuation,push_jsx_text
+rule.attr.name = (?P<func>[A-Za-z_:][-A-Za-z0-9_:.]*) -> function
+rule.eq        = (?P<op>=) -> operator
+push.attr.dq   = " -> jsx_attr_dq
+push.attr.sq   = ' -> jsx_attr_sq
+push.attr.expr = \{ -> jsx_expr
+
+[state:push_jsx_text]
+rule.noop =  -> jsx_text
+
+[state:jsx_text]
+push.close = </(?=[A-Za-z]) -> jsx_tag
+push.expr  = \{ -> jsx_expr
+rule.txt   = (?P<const>[^<{]+) -> constant
+
+[state:jsx_expr]
+rule.end   = \} -> pop
+rule.string1 = " -> string_dq
+rule.string2 = ' -> string_sq
+rule.tpl   = ` -> template
+rule.num   = (?P<number>\b\d(?:_?\d)*(?:\.(?:\d(?:_?\d)*)?)?(?:[eE][+-]?\d(?:_?\d)*)?\b) -> number
+rule.id    = (?P<const>\b[A-Za-z_$][A-Za-z0-9_$]*\b) -> constant
+rule.op    = (?P<op>[+\-*/%&|\^~!<>?:=\.]) -> operator
+rule.punc  = (?P<punct>[{}\[\]();,]) -> punctuation
+
+[state:jsx_attr_dq]
+rule.end  = " -> pop
+rule.body = (?P<string>[^"\\]+|\\.) -> string
+push.expr = \{ -> jsx_expr
+
+[state:jsx_attr_sq]
+rule.end  = ' -> pop
+rule.body = (?P<string>[^'\\]+|\\.) -> string
+push.expr = \{ -> jsx_expr

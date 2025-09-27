@@ -1,0 +1,78 @@
+# css.syntax — Coloration CSS3 (+ variables et @rules modernes)
+# Encodage: UTF-8
+
+[meta]
+name = CSS
+version = 1.0
+file_extensions = .css
+case_sensitive = false
+
+[colors]
+comment = comment
+string  = string
+number  = number
+keyword = keyword
+type    = type
+storage = storage
+macro   = macro
+preproc = preproc
+func    = function
+const   = constant
+op      = operator
+punct   = punctuation
+invalid = invalid
+todo    = todo
+
+[states]
+initial = code
+
+[state:code]
+# Commentaires
+rule.comment.blk = (?P<comment>/\*[^*]*\*+(?:[^/*][^*]*\*+)*/)s -> comment
+rule.todo        = (?P<todo>/\*\s*(?:TODO|FIXME|BUG|HACK|NOTE)\b.*?\*/) -> todo
+
+# Sélecteurs
+rule.selector.id    = (?P<keyword>#[A-Za-z_][A-Za-z0-9_-]*) -> keyword
+rule.selector.class = (?P<keyword>\.[A-Za-z_][A-Za-z0-9_-]*) -> keyword
+rule.selector.tag   = (?P<type>\b[a-zA-Z][a-zA-Z0-9_-]*\b)(?=[\s\{:,]) -> type
+rule.selector.pseudo= (?P<keyword>:{1,2}[a-zA-Z-]+) -> keyword
+rule.selector.attr  = (?P<punct>\[)[^\]]*(?P<punct>\]) -> punctuation
+
+# Variables CSS custom properties
+rule.var = (?P<const>--[A-Za-z0-9_-]+) -> constant
+
+# @rules
+rule.at = (?P<preproc>@[a-zA-Z-]+) -> preproc
+
+# Nombres + unités
+rule.num.px   = (?P<number>\b\d+(\.\d+)?)(?P<type>px|em|rem|vh|vw|vmin|vmax|%) -> number,type
+rule.num.unit = (?P<number>\b\d+(\.\d+)?)(?P<type>cm|mm|in|pt|pc|ch|ex|deg|rad|grad|turn|s|ms|Hz|kHz|dpi|dppx|dpcm) -> number,type
+rule.num      = (?P<number>\b\d+(\.\d+)?\b) -> number
+
+# Couleurs hex
+rule.color.hex = (?P<const>#[0-9A-Fa-f]{3,8}) -> constant
+
+# Fonctions CSS
+rule.func = (?P<func>[a-zA-Z-]+)(?=\() -> function
+
+# Chaînes
+push.str.dq = " -> string_dq
+push.str.sq = ' -> string_sq
+
+# Opérateurs et ponctuation
+rule.ops   = (?P<op>[:=]) -> operator
+rule.punct = (?P<punct>[{}();,]) -> punctuation
+
+# ===================== CHAÎNES ======================
+
+[state:string_dq]
+rule.escape = (?P<string>\\.) -> string
+rule.end    = " -> pop
+rule.body   = (?P<string>[^"\\]+) -> string
+rule.nl     = (?P<invalid>\n) -> invalid
+
+[state:string_sq]
+rule.escape = (?P<string>\\.) -> string
+rule.end    = ' -> pop
+rule.body   = (?P<string>[^'\\]+) -> string
+rule.nl     = (?P<invalid>\n) -> invalid

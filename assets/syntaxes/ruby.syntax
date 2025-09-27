@@ -1,0 +1,104 @@
+# ruby.syntax — Coloration Ruby 3.x
+# Encodage: UTF-8
+
+[meta]
+name = Ruby
+version = 1.0
+file_extensions = .rb,.rake,.gemspec,.irb
+case_sensitive = true
+
+[colors]
+comment = comment
+string  = string
+number  = number
+keyword = keyword
+type    = type
+storage = storage
+macro   = macro
+preproc = preproc
+func    = function
+const   = constant
+op      = operator
+punct   = punctuation
+invalid = invalid
+todo    = todo
+
+[states]
+initial = code
+
+[state:code]
+# Commentaires
+rule.cmt.line = (?P<comment>#[^\n]*) -> comment
+rule.todo     = (?P<todo>#\s*(?:TODO|FIXME|BUG|HACK|NOTE)\b.*) -> todo
+
+# Chaînes
+push.str.dq  = " -> string_dq
+push.str.sq  = ' -> string_sq
+push.str.cmd = ` -> string_cmd
+push.heredoc = <<[-~]?[A-Za-z_][A-Za-z0-9_]* -> heredoc
+
+# Nombres
+rule.num.hex   = (?P<number>\b0[xX][0-9A-Fa-f_]+\b) -> number
+rule.num.bin   = (?P<number>\b0[bB][01_]+\b) -> number
+rule.num.oct   = (?P<number>\b0[oO]?[0-7_]+\b) -> number
+rule.num.float = (?P<number>\b\d[\d_]*\.\d[\d_]*(?:[eE][+-]?\d+)?\b|\b\d[\d_]*[eE][+-]?\d+\b) -> number
+rule.num.int   = (?P<number>\b\d[\d_]*\b) -> number
+
+# Mots-clés
+rule.keyword = (?P<keyword>\b(?:BEGIN|END|__ENCODING__|__FILE__|__LINE__|alias|and|begin|break|case|class|def|defined\?|do|else|elsif|end|ensure|false|for|if|in|module|next|nil|not|or|redo|rescue|retry|return|self|super|then|true|undef|unless|until|when|while|yield)\b) -> keyword
+
+# Constantes (Majuscule initiale)
+rule.const = (?P<const>\b[A-Z][A-Za-z0-9_]*\b) -> constant
+
+# Variables spéciales
+rule.var.global   = (?P<const>\$[A-Za-z0-9_]+) -> constant
+rule.var.instance = (?P<const>@[A-Za-z0-9_]+) -> constant
+rule.var.class    = (?P<const>@@[A-Za-z0-9_]+) -> constant
+rule.backrefs     = (?P<const>\$[1-9]\d*) -> constant
+
+# Symboles
+rule.symbol = (?P<const>:[A-Za-z_][A-Za-z0-9_]*[!?=]?) -> constant
+
+# Définition de méthode
+rule.def.func = (?P<keyword>\bdef\b)\s+(?P<func>[A-Za-z_][A-Za-z0-9_]*[!?=]?) -> keyword,function
+
+# Appels de fonction (heuristique)
+rule.func.call = (?P<func>\b[a-z_][A-Za-z0-9_]*[!?=]?)(?=\s*[({]) -> function
+
+# Opérateurs et ponctuation
+rule.ops   = (?P<op>(\*\*|<<|>>|<=|>=|===|==|!=|=~|!~|&&|\|\||\+=|-=|\*=|/=|%=|\*\*=|&=|\|=|\^=|<<=|>>=|=>|\.\.|\.{3}|::|[+\-*/%&|\^~!<>?:=])) -> operator
+rule.punct = (?P<punct>[{}$begin:math:display$$end:math:display$();,\.]) -> punctuation
+
+# ===================== CHAÎNES ======================
+
+[state:string_dq]
+rule.escape = (?P<string>\\(?:x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|[\\'"nrtbfav0])) -> string
+rule.interp = \#\{ -> interp
+rule.end    = " -> pop
+rule.body   = (?P<string>[^"\\#]+|#(?!\{)) -> string
+rule.nl     = (?P<invalid>\n) -> invalid
+
+[state:string_sq]
+rule.escape = (?P<string>\\') -> string
+rule.end    = ' -> pop
+rule.body   = (?P<string>[^'\\]+) -> string
+rule.nl     = (?P<invalid>\n) -> invalid
+
+[state:string_cmd]
+rule.escape = (?P<string>\\.) -> string
+rule.interp = \#\{ -> interp
+rule.end    = ` -> pop
+rule.body   = (?P<string>[^`\\#]+|#(?!\{)) -> string
+rule.nl     = (?P<invalid>\n) -> invalid
+
+[state:heredoc]
+# se termine quand une ligne ne contient que l’étiquette
+rule.end  = ^[A-Za-z_][A-Za-z0-9_]*$ -> pop
+rule.body = (?P<string>.+) -> string
+
+[state:interp]
+rule.end   = \} -> pop
+rule.id    = (?P<const>\b[A-Za-z_][A-Za-z0-9_]*\b) -> constant
+rule.num   = (?P<number>\b\d[\d_]*\b) -> number
+rule.op    = (?P<op>[+\-*/%&|\^~!<>?:=]) -> operator
+rule.punct = (?P<punct>[{}$begin:math:display$$end:math:display$();,\.]) -> punctuation
