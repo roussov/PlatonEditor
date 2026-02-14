@@ -1,4 +1,370 @@
-space platon.editor.core.buffer.multi
+space platon.editor.core.buffer.multi.buffer_registry
 
-proc register_buffer() {}
-proc switch_buffer(id : int) {}
+pull platon.editor.core.buffer.multi.buffer_pool as pool
+
+<<< Global Buffer Registry ULTRA MAX+++ >>>
+<<< Fast lookup by id, name, path, workspace grouping, indexing metrics >>>
+
+
+form RegistryEntry {
+    id : int
+    name : string
+    path : string
+    workspace : string
+    open : bool
+    version : int
+}
+
+form RegistryStats {
+    registered : int
+    unregistered : int
+    lookups : int
+    hits : int
+    misses : int
+    version : int
+}
+
+form BufferRegistry {
+    entries : [RegistryEntry]
+    stats : RegistryStats
+}
+
+<<< Create new registry >>>
+
+proc new() -> BufferRegistry {
+
+    return BufferRegistry {
+        entries: [],
+        stats: RegistryStats {
+            registered: 0,
+            unregistered: 0,
+            lookups: 0,
+            hits: 0,
+            misses: 0,
+            version: 1
+        }
+    }
+}
+
+<<< Register buffer metadata >>>
+
+proc register(
+    br : BufferRegistry,
+    id : int,
+    name : string,
+    path : string,
+    workspace : string
+) -> BufferRegistry {
+
+    let entry = RegistryEntry {
+        id: id,
+        name: name,
+        path: path,
+        workspace: workspace,
+        open: true,
+        version: 1
+    }
+
+    set br.entries = br.entries + [entry]
+
+    set br.stats.registered =
+        br.stats.registered + 1
+
+    set br.stats.version =
+        br.stats.version + 1
+
+    return br
+}
+
+<<< Unregister buffer >>>
+
+proc unregister(
+    br : BufferRegistry,
+    id : int
+) -> BufferRegistry {
+
+    let new_entries : [RegistryEntry] = []
+
+    let i = 0
+
+    loop {
+
+        if i >= br.entries.length {
+            break
+        }
+
+        if br.entries[i].id != id {
+            set new_entries =
+                new_entries + [br.entries[i]]
+        }
+
+        set i = i + 1
+    }
+
+    set br.entries = new_entries
+
+    set br.stats.unregistered =
+        br.stats.unregistered + 1
+
+    set br.stats.version =
+        br.stats.version + 1
+
+    return br
+}
+
+<<< Mark buffer closed (without removing metadata) >>>
+
+proc mark_closed(
+    br : BufferRegistry,
+    id : int
+) -> BufferRegistry {
+
+    let i = 0
+
+    loop {
+
+        if i >= br.entries.length {
+            break
+        }
+
+        if br.entries[i].id == id {
+
+            let entry = br.entries[i]
+
+            set entry.open = false
+            set entry.version =
+                entry.version + 1
+
+            set br.entries[i] = entry
+
+            return br
+        }
+
+        set i = i + 1
+    }
+
+    return br
+}
+
+<<< Lookup by id >>>
+
+proc lookup_by_id(
+    br : BufferRegistry,
+    id : int
+) -> RegistryEntry {
+
+    set br.stats.lookups =
+        br.stats.lookups + 1
+
+    let i = 0
+
+    loop {
+
+        if i >= br.entries.length {
+            break
+        }
+
+        if br.entries[i].id == id {
+
+            set br.stats.hits =
+                br.stats.hits + 1
+
+            return br.entries[i]
+        }
+
+        set i = i + 1
+    }
+
+    set br.stats.misses =
+        br.stats.misses + 1
+
+    return RegistryEntry {
+        id: -1,
+        name: "",
+        path: "",
+        workspace: "",
+        open: false,
+        version: 0
+    }
+}
+
+<<< Lookup by name >>>
+
+proc lookup_by_name(
+    br : BufferRegistry,
+    name : string
+) -> RegistryEntry {
+
+    set br.stats.lookups =
+        br.stats.lookups + 1
+
+    let i = 0
+
+    loop {
+
+        if i >= br.entries.length {
+            break
+        }
+
+        if br.entries[i].name == name {
+
+            set br.stats.hits =
+                br.stats.hits + 1
+
+            return br.entries[i]
+        }
+
+        set i = i + 1
+    }
+
+    set br.stats.misses =
+        br.stats.misses + 1
+
+    return RegistryEntry {
+        id: -1,
+        name: "",
+        path: "",
+        workspace: "",
+        open: false,
+        version: 0
+    }
+}
+
+<<< Lookup by path >>>
+
+proc lookup_by_path(
+    br : BufferRegistry,
+    path : string
+) -> RegistryEntry {
+
+    set br.stats.lookups =
+        br.stats.lookups + 1
+
+    let i = 0
+
+    loop {
+
+        if i >= br.entries.length {
+            break
+        }
+
+        if br.entries[i].path == path {
+
+            set br.stats.hits =
+                br.stats.hits + 1
+
+            return br.entries[i]
+        }
+
+        set i = i + 1
+    }
+
+    set br.stats.misses =
+        br.stats.misses + 1
+
+    return RegistryEntry {
+        id: -1,
+        name: "",
+        path: "",
+        workspace: "",
+        open: false,
+        version: 0
+    }
+}
+
+<<< List buffers by workspace >>>
+
+proc list_workspace(
+    br : BufferRegistry,
+    workspace : string
+) -> [RegistryEntry] {
+
+    let result : [RegistryEntry] = []
+
+    let i = 0
+
+    loop {
+
+        if i >= br.entries.length {
+            break
+        }
+
+        if br.entries[i].workspace == workspace {
+
+            set result =
+                result + [br.entries[i]]
+        }
+
+        set i = i + 1
+    }
+
+    return result
+}
+
+<<< Registry statistics accessors >>>
+
+proc total_registered(br : BufferRegistry) -> int {
+    return br.stats.registered
+}
+
+proc total_unregistered(br : BufferRegistry) -> int {
+    return br.stats.unregistered
+}
+
+proc total_lookups(br : BufferRegistry) -> int {
+    return br.stats.lookups
+}
+
+proc total_hits(br : BufferRegistry) -> int {
+    return br.stats.hits
+}
+
+proc total_misses(br : BufferRegistry) -> int {
+    return br.stats.misses
+}
+
+<<< Stress registry workload >>>
+
+proc stress_registry(
+    br : BufferRegistry,
+    iterations : int
+) -> BufferRegistry {
+
+    let i = 0
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        let name = "file"
+        let path = "path"
+        let workspace = "default"
+
+        set br =
+            register(br, i + 1, name, path, workspace)
+
+        if i % 3 == 0 {
+            lookup_by_id(br, i + 1)
+        }
+
+        if i % 5 == 0 {
+            set br =
+                unregister(br, i + 1)
+        }
+
+        set i = i + 1
+    }
+
+    return br
+}
+
+<<< Full registry suite >>>
+
+proc run_registry_ultra() {
+
+    let br = new()
+
+    stress_registry(br, 2000)
+}

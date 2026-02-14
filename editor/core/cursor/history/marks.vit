@@ -1,1 +1,303 @@
-#  mark system
+space platon.editor.core.cursor.history.marks
+
+<<< Marks Engine ULTRA MAX CORE >>>
+<<< Named marks + buffer local/global + auto adjust after edits >>>
+
+
+<<< ===================================================== >>
+<<< Models >>
+<<< ===================================================== >>>
+
+form Mark {
+    name      : string
+    offset    : int
+    version   : int
+    global    : bool
+}
+
+form MarkSet {
+    marks     : [Mark]
+    capacity  : int
+}
+
+const DEFAULT_MARK_CAPACITY : int = 512
+
+
+<<< ===================================================== >>
+<<< Initialization >>
+<<< ===================================================== >>>
+
+proc new() -> MarkSet {
+
+    return MarkSet {
+        marks: [],
+        capacity: DEFAULT_MARK_CAPACITY
+    }
+}
+
+
+<<< ===================================================== >>
+<<< Internal Helpers >>
+<<< ===================================================== >>>
+
+proc find_index(ms : MarkSet, name : string) -> int {
+
+    let i = 0
+
+    loop {
+
+        if i >= ms.marks.length {
+            break
+        }
+
+        if ms.marks[i].name == name {
+            return i
+        }
+
+        set i = i + 1
+    }
+
+    return -1
+}
+
+proc ensure_capacity(ms : MarkSet) -> MarkSet {
+
+    if ms.marks.length < ms.capacity {
+        return ms
+    }
+
+    <<< Drop oldest non-global mark first >>>
+
+    let i = 0
+
+    loop {
+
+        if i >= ms.marks.length {
+            break
+        }
+
+        if not ms.marks[i].global {
+
+            set ms.marks =
+                ms.marks[0:i] +
+                ms.marks[i+1:ms.marks.length]
+
+            return ms
+        }
+
+        set i = i + 1
+    }
+
+    <<< If all are global, drop first >>>
+
+    set ms.marks =
+        ms.marks[1:ms.marks.length]
+
+    return ms
+}
+
+
+<<< ===================================================== >>
+<<< Set Mark >>
+<<< ===================================================== >>>
+
+proc set_mark(
+    ms : MarkSet,
+    name : string,
+    offset : int,
+    version : int,
+    global : bool
+) -> MarkSet {
+
+    let idx =
+        find_index(ms, name)
+
+    if idx >= 0 {
+
+        set ms.marks[idx] =
+            Mark {
+                name: name,
+                offset: offset,
+                version: version,
+                global: global
+            }
+
+        return ms
+    }
+
+    set ms =
+        ensure_capacity(ms)
+
+    let m =
+        Mark {
+            name: name,
+            offset: offset,
+            version: version,
+            global: global
+        }
+
+    set ms.marks =
+        ms.marks + [m]
+
+    return ms
+}
+
+
+<<< ===================================================== >>
+<<< Get Mark >>
+<<< ===================================================== >>>
+
+proc get_mark(
+    ms : MarkSet,
+    name : string
+) -> [bool] {
+
+    let idx =
+        find_index(ms, name)
+
+    if idx < 0 {
+        return [false, Mark { name: "", offset: 0, version: 0, global: false }]
+    }
+
+    return [true, ms.marks[idx]]
+}
+
+
+<<< ===================================================== >>
+<<< Remove Mark >>
+<<< ===================================================== >>>
+
+proc remove_mark(
+    ms : MarkSet,
+    name : string
+) -> MarkSet {
+
+    let idx =
+        find_index(ms, name)
+
+    if idx < 0 {
+        return ms
+    }
+
+    set ms.marks =
+        ms.marks[0:idx] +
+        ms.marks[idx+1:ms.marks.length]
+
+    return ms
+}
+
+
+<<< ===================================================== >>
+<<< Adjust After Insert >>
+<<< ===================================================== >>>
+
+proc adjust_after_insert(
+    ms : MarkSet,
+    pos : int,
+    len : int
+) -> MarkSet {
+
+    let i = 0
+
+    loop {
+
+        if i >= ms.marks.length {
+            break
+        }
+
+        if ms.marks[i].offset >= pos {
+
+            set ms.marks[i].offset =
+                ms.marks[i].offset + len
+        }
+
+        set i = i + 1
+    }
+
+    return ms
+}
+
+
+<<< ===================================================== >>
+<<< Adjust After Delete >>
+<<< ===================================================== >>>
+
+proc adjust_after_delete(
+    ms : MarkSet,
+    pos : int,
+    len : int
+) -> MarkSet {
+
+    let end_pos = pos + len
+
+    let i = 0
+
+    loop {
+
+        if i >= ms.marks.length {
+            break
+        }
+
+        let off =
+            ms.marks[i].offset
+
+        if off > pos {
+
+            if off < end_pos {
+
+                set ms.marks[i].offset = pos
+
+            } else {
+
+                set ms.marks[i].offset =
+                    off - len
+            }
+        }
+
+        set i = i + 1
+    }
+
+    return ms
+}
+
+
+<<< ===================================================== >>
+<<< Clear Local Marks >>
+<<< ===================================================== >>>
+
+proc clear_local(ms : MarkSet) -> MarkSet {
+
+    let i = 0
+
+    loop {
+
+        if i >= ms.marks.length {
+            break
+        }
+
+        if not ms.marks[i].global {
+
+            set ms.marks =
+                ms.marks[0:i] +
+                ms.marks[i+1:ms.marks.length]
+
+        } else {
+
+            set i = i + 1
+        }
+    }
+
+    return ms
+}
+
+
+<<< ===================================================== >>
+<<< Clear All >>
+<<< ===================================================== >>>
+
+proc clear_all(ms : MarkSet) -> MarkSet {
+
+    set ms.marks = []
+
+    return ms
+}

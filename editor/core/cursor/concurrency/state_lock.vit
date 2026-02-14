@@ -1,1 +1,344 @@
-#  concurrent-safe cursor updates
+space platon.editor.core.cursor.concurrency.atomic_position
+
+<<< Atomic Position ULTRA MAX++ >>>
+<<< Lock-free offset + version tag + ABA mitigation + memory model stub >>>
+
+
+<<< ===================================================== >>
+<<< Memory Order Model Stub >>
+<<< Replace with real acquire/release semantics >>
+<<< ===================================================== >>>
+
+const ORDER_RELAXED : int = 0
+const ORDER_ACQUIRE : int = 1
+const ORDER_RELEASE : int = 2
+const ORDER_ACQREL  : int = 3
+
+
+<<< ===================================================== >>
+<<< Atomic Primitive Stub >>
+<<< Replace with platform-specific backend >>
+<<< ===================================================== >>>
+
+form AtomicInt {
+    value : int
+}
+
+proc atomic_new(v : int) -> AtomicInt {
+    return AtomicInt { value: v }
+}
+
+proc atomic_load(a : AtomicInt, order : int) -> int {
+    return a.value
+}
+
+proc atomic_store(
+    a : AtomicInt,
+    v : int,
+    order : int
+) -> AtomicInt {
+
+    set a.value = v
+    return a
+}
+
+proc atomic_compare_exchange(
+    a : AtomicInt,
+    expected : int,
+    desired : int,
+    order : int
+) -> [bool] {
+
+    if a.value == expected {
+
+        set a.value = desired
+        return [true, desired]
+    }
+
+    return [false, a.value]
+}
+
+
+<<< ===================================================== >>
+<<< Versioned Atomic Offset >>
+<<< Upper 32 bits = version, lower 32 bits = offset >>
+<<< ===================================================== >>>
+
+form AtomicPosition {
+    raw : AtomicInt
+}
+
+proc pack(version : int, offset : int) -> int {
+
+    return (version << 32) | (offset & 4294967295)
+}
+
+proc unpack_version(raw : int) -> int {
+    return raw >> 32
+}
+
+proc unpack_offset(raw : int) -> int {
+    return raw & 4294967295
+}
+
+proc new(offset : int) -> AtomicPosition {
+
+    return AtomicPosition {
+        raw: atomic_new(pack(0, offset))
+    }
+}
+
+proc load(p : AtomicPosition) -> int {
+
+    let raw =
+        atomic_load(p.raw, ORDER_ACQUIRE)
+
+    return unpack_offset(raw)
+}
+
+proc load_version(p : AtomicPosition) -> int {
+
+    let raw =
+        atomic_load(p.raw, ORDER_ACQUIRE)
+
+    return unpack_version(raw)
+}
+
+
+<<< ===================================================== >>
+<<< CAS Update Loop >>
+<<< ===================================================== >>>
+
+proc cas_update(
+    p : AtomicPosition,
+    new_offset : int
+) -> AtomicPosition {
+
+    loop {
+
+        let raw =
+            atomic_load(p.raw, ORDER_ACQUIRE)
+
+        let version =
+            unpack_version(raw)
+
+        let packed =
+            pack(version + 1, new_offset)
+
+        let result =
+            atomic_compare_exchange(
+                p.raw,
+                raw,
+                packed,
+                ORDER_ACQREL
+            )
+
+        if result[0] {
+            break
+        }
+    }
+
+    return p
+}
+
+
+<<< ===================================================== >>
+<<< Add / Sub >>
+<<< ===================================================== >>>
+
+proc add(p : AtomicPosition, delta : int) -> AtomicPosition {
+
+    loop {
+
+        let raw =
+            atomic_load(p.raw, ORDER_ACQUIRE)
+
+        let version =
+            unpack_version(raw)
+
+        let offset =
+            unpack_offset(raw)
+
+        let next =
+            offset + delta
+
+        let packed =
+            pack(version + 1, next)
+
+        let result =
+            atomic_compare_exchange(
+                p.raw,
+                raw,
+                packed,
+                ORDER_ACQREL
+            )
+
+        if result[0] {
+            break
+        }
+    }
+
+    return p
+}
+
+proc sub(p : AtomicPosition, delta : int) -> AtomicPosition {
+    return add(p, -delta)
+}
+
+
+<<< ===================================================== >>
+<<< Clamp >>
+<<< ===================================================== >>>
+
+proc clamp(
+    p : AtomicPosition,
+    min : int,
+    max : int
+) -> AtomicPosition {
+
+    loop {
+
+        let raw =
+            atomic_load(p.raw, ORDER_ACQUIRE)
+
+        let version =
+            unpack_version(raw)
+
+        let offset =
+            unpack_offset(raw)
+
+        let next = offset
+
+        if offset < min {
+            set next = min
+        }
+
+        if offset > max {
+            set next = max
+        }
+
+        if next == offset {
+            break
+        }
+
+        let packed =
+            pack(version + 1, next)
+
+        let result =
+            atomic_compare_exchange(
+                p.raw,
+                raw,
+                packed,
+                ORDER_ACQREL
+            )
+
+        if result[0] {
+            break
+        }
+    }
+
+    return p
+}
+
+
+<<< ===================================================== >>
+<<< Adjust After Insert >>
+<<< ===================================================== >>>
+
+proc adjust_after_insert(
+    p : AtomicPosition,
+    pos : int,
+    len : int
+) -> AtomicPosition {
+
+    loop {
+
+        let raw =
+            atomic_load(p.raw, ORDER_ACQUIRE)
+
+        let version =
+            unpack_version(raw)
+
+        let offset =
+            unpack_offset(raw)
+
+        if offset < pos {
+            break
+        }
+
+        let next =
+            offset + len
+
+        let packed =
+            pack(version + 1, next)
+
+        let result =
+            atomic_compare_exchange(
+                p.raw,
+                raw,
+                packed,
+                ORDER_ACQREL
+            )
+
+        if result[0] {
+            break
+        }
+    }
+
+    return p
+}
+
+
+<<< ===================================================== >>
+<<< Adjust After Delete >>
+<<< ===================================================== >>>
+
+proc adjust_after_delete(
+    p : AtomicPosition,
+    pos : int,
+    len : int
+) -> AtomicPosition {
+
+    let end_pos = pos + len
+
+    loop {
+
+        let raw =
+            atomic_load(p.raw, ORDER_ACQUIRE)
+
+        let version =
+            unpack_version(raw)
+
+        let offset =
+            unpack_offset(raw)
+
+        if offset <= pos {
+            break
+        }
+
+        let next = offset
+
+        if offset < end_pos {
+            set next = pos
+        } else {
+            set next = offset - len
+        }
+
+        let packed =
+            pack(version + 1, next)
+
+        let result =
+            atomic_compare_exchange(
+                p.raw,
+                raw,
+                packed,
+                ORDER_ACQREL
+            )
+
+        if result[0] {
+            break
+        }
+    }
+
+    return p
+}

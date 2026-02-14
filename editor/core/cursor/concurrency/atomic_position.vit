@@ -1,1 +1,267 @@
-#  atomic position updates
+space platon.editor.core.cursor.concurrency.atomic_position
+
+<<< Atomic Cursor Position ULTRA MAX CORE >>>
+<<< Lock-free offset updates + CAS loop + monotonic adjustments >>>
+
+
+<<< ===================================================== >>
+<<< Atomic Primitive Stub >>
+<<< Replace with real platform atomic backend >>
+<<< ===================================================== >>>
+
+form AtomicInt {
+    value : int
+}
+
+proc atomic_new(v : int) -> AtomicInt {
+    return AtomicInt { value: v }
+}
+
+proc atomic_load(a : AtomicInt) -> int {
+    return a.value
+}
+
+proc atomic_store(a : AtomicInt, v : int) -> AtomicInt {
+    set a.value = v
+    return a
+}
+
+proc atomic_compare_exchange(
+    a : AtomicInt,
+    expected : int,
+    desired : int
+) -> [bool] {
+
+    if a.value == expected {
+
+        set a.value = desired
+        return [true, desired]
+    }
+
+    return [false, a.value]
+}
+
+
+<<< ===================================================== >>
+<<< Atomic Position Model >>
+<<< ===================================================== >>>
+
+form AtomicPosition {
+    offset : AtomicInt
+}
+
+proc new(offset : int) -> AtomicPosition {
+
+    return AtomicPosition {
+        offset: atomic_new(offset)
+    }
+}
+
+proc load(p : AtomicPosition) -> int {
+    return atomic_load(p.offset)
+}
+
+proc store(p : AtomicPosition, off : int) -> AtomicPosition {
+
+    set p.offset =
+        atomic_store(p.offset, off)
+
+    return p
+}
+
+
+<<< ===================================================== >>
+<<< Lock-Free Increment / Decrement >>
+<<< ===================================================== >>>
+
+proc add(p : AtomicPosition, delta : int) -> AtomicPosition {
+
+    loop {
+
+        let current =
+            atomic_load(p.offset)
+
+        let next =
+            current + delta
+
+        let result =
+            atomic_compare_exchange(
+                p.offset,
+                current,
+                next
+            )
+
+        if result[0] {
+            break
+        }
+    }
+
+    return p
+}
+
+proc sub(p : AtomicPosition, delta : int) -> AtomicPosition {
+    return add(p, -delta)
+}
+
+
+<<< ===================================================== >>
+<<< Clamp With CAS >>
+<<< ===================================================== >>>
+
+proc clamp(
+    p : AtomicPosition,
+    min : int,
+    max : int
+) -> AtomicPosition {
+
+    loop {
+
+        let current =
+            atomic_load(p.offset)
+
+        let next = current
+
+        if current < min {
+            set next = min
+        }
+
+        if current > max {
+            set next = max
+        }
+
+        if next == current {
+            break
+        }
+
+        let result =
+            atomic_compare_exchange(
+                p.offset,
+                current,
+                next
+            )
+
+        if result[0] {
+            break
+        }
+    }
+
+    return p
+}
+
+
+<<< ===================================================== >>
+<<< Adjust After Insert >>
+<<< ===================================================== >>>
+
+proc adjust_after_insert(
+    p : AtomicPosition,
+    pos : int,
+    len : int
+) -> AtomicPosition {
+
+    loop {
+
+        let current =
+            atomic_load(p.offset)
+
+        if current < pos {
+            break
+        }
+
+        let next =
+            current + len
+
+        let result =
+            atomic_compare_exchange(
+                p.offset,
+                current,
+                next
+            )
+
+        if result[0] {
+            break
+        }
+    }
+
+    return p
+}
+
+
+<<< ===================================================== >>
+<<< Adjust After Delete >>
+<<< ===================================================== >>>
+
+proc adjust_after_delete(
+    p : AtomicPosition,
+    pos : int,
+    len : int
+) -> AtomicPosition {
+
+    let end_pos = pos + len
+
+    loop {
+
+        let current =
+            atomic_load(p.offset)
+
+        if current <= pos {
+            break
+        }
+
+        let next = current
+
+        if current < end_pos {
+            set next = pos
+        } else {
+            set next = current - len
+        }
+
+        let result =
+            atomic_compare_exchange(
+                p.offset,
+                current,
+                next
+            )
+
+        if result[0] {
+            break
+        }
+    }
+
+    return p
+}
+
+
+<<< ===================================================== >>
+<<< Monotonic Increase >>
+<<< Used for versioned cursor updates >>
+<<< ===================================================== >>>
+
+proc max_update(
+    p : AtomicPosition,
+    value : int
+) -> AtomicPosition {
+
+    loop {
+
+        let current =
+            atomic_load(p.offset)
+
+        if current >= value {
+            break
+        }
+
+        let result =
+            atomic_compare_exchange(
+                p.offset,
+                current,
+                value
+            )
+
+        if result[0] {
+            break
+        }
+    }
+
+    return p
+}

@@ -1,1 +1,283 @@
-#  rectangular selection
+space platon.editor.core.cursor.selection.rectangular
+
+pull platon.editor.core.buffer.buffer as buffer
+pull platon.editor.core.cursor.navigation.line_navigation as line_nav
+
+<<< Rectangular Selection ULTRA MAX CORE >>>
+<<< Advanced column selection engine (visual block mode) >>>
+
+
+<<< ===================================================== >>
+<<< Models >>
+<<< ===================================================== >>>
+
+form RectangularSelection {
+    start_line : int
+    end_line   : int
+    start_col  : int
+    end_col    : int
+    tab_width  : int
+}
+
+
+<<< ===================================================== >>
+<<< Helpers >>
+<<< ===================================================== >>>
+
+proc min(a : int, b : int) -> int {
+    if a < b { return a }
+    return b
+}
+
+proc max(a : int, b : int) -> int {
+    if a > b { return a }
+    return b
+}
+
+proc normalize(sel : RectangularSelection) -> RectangularSelection {
+
+    let sl = min(sel.start_line, sel.end_line)
+    let el = max(sel.start_line, sel.end_line)
+
+    let sc = min(sel.start_col, sel.end_col)
+    let ec = max(sel.start_col, sel.end_col)
+
+    return RectangularSelection {
+        start_line: sl,
+        end_line: el,
+        start_col: sc,
+        end_col: ec,
+        tab_width: sel.tab_width
+    }
+}
+
+
+proc offset_of_line(text : string, target_line : int) -> int {
+
+    let i = 0
+    let line = 0
+
+    if target_line <= 0 {
+        return 0
+    }
+
+    loop {
+
+        if i >= text.length {
+            break
+        }
+
+        if text[i] == 10 {
+            set line = line + 1
+
+            if line == target_line {
+                return i + 1
+            }
+        }
+
+        set i = i + 1
+    }
+
+    return text.length
+}
+
+
+proc visual_column(
+    text : string,
+    line_start : int,
+    raw_offset : int,
+    tab_width : int
+) -> int {
+
+    let i = line_start
+    let col = 0
+
+    loop {
+
+        if i >= raw_offset {
+            break
+        }
+
+        if text[i] == 9 {
+
+            let next_tab =
+                tab_width - (col % tab_width)
+
+            set col = col + next_tab
+
+        } else {
+
+            set col = col + 1
+        }
+
+        set i = i + 1
+    }
+
+    return col
+}
+
+
+proc raw_offset_from_column(
+    text : string,
+    line_start : int,
+    desired_col : int,
+    tab_width : int
+) -> int {
+
+    let i = line_start
+    let col = 0
+
+    loop {
+
+        if i >= text.length {
+            break
+        }
+
+        if text[i] == 10 {
+            break
+        }
+
+        if col >= desired_col {
+            break
+        }
+
+        if text[i] == 9 {
+
+            let next_tab =
+                tab_width - (col % tab_width)
+
+            if col + next_tab > desired_col {
+                break
+            }
+
+            set col = col + next_tab
+
+        } else {
+
+            set col = col + 1
+        }
+
+        set i = i + 1
+    }
+
+    return i
+}
+
+
+<<< ===================================================== >>
+<<< Extraction >>
+<<< ===================================================== >>>
+
+proc extract(
+    b : buffer.Buffer,
+    sel : RectangularSelection
+) -> [string] {
+
+    let text =
+        buffer.as_string(b)
+
+    let s =
+        normalize(sel)
+
+    let result = []
+    let line = s.start_line
+
+    loop {
+
+        if line > s.end_line {
+            break
+        }
+
+        let line_start =
+            offset_of_line(text, line)
+
+        let start =
+            raw_offset_from_column(
+                text,
+                line_start,
+                s.start_col,
+                s.tab_width
+            )
+
+        let end =
+            raw_offset_from_column(
+                text,
+                line_start,
+                s.end_col,
+                s.tab_width
+            )
+
+        set result =
+            result + [ text[start:end] ]
+
+        set line = line + 1
+    }
+
+    return result
+}
+
+
+<<< ===================================================== >>
+<<< Replace Block >>
+<<< ===================================================== >>>
+
+proc replace(
+    b : buffer.Buffer,
+    sel : RectangularSelection,
+    replacement : string
+) -> buffer.Buffer {
+
+    let text =
+        buffer.as_string(b)
+
+    let s =
+        normalize(sel)
+
+    let line = s.end_line
+
+    <<< Apply bottom-up to preserve offsets >>>
+
+    loop {
+
+        if line < s.start_line {
+            break
+        }
+
+        let line_start =
+            offset_of_line(text, line)
+
+        let start =
+            raw_offset_from_column(
+                text,
+                line_start,
+                s.start_col,
+                s.tab_width
+            )
+
+        let end =
+            raw_offset_from_column(
+                text,
+                line_start,
+                s.end_col,
+                s.tab_width
+            )
+
+        set b =
+            buffer.delete(
+                b,
+                start,
+                end - start
+            )
+
+        set b =
+            buffer.insert(
+                b,
+                start,
+                replacement
+            )
+
+        set line = line - 1
+    }
+
+    return b
+}

@@ -1,6 +1,287 @@
-space platon.editor.core.buffer
+space platon.editor.core.buffer.range
+
+<<< Range Engine ULTRA MAX CORE >>>
+<<< Immutable range model + normalization + merge + overlap + transform >>>
+
+
+<<< ===================================================== >>
+<<< Models >>
+<<< ===================================================== >>>
 
 form Range {
     start : int
-    end : int
+    end   : int
+}
+
+form RangeSet {
+    ranges : [Range]
+}
+
+<<< ===================================================== >>
+<<< Construction >>
+<<< ===================================================== >>>
+
+proc new(start : int, end : int) -> Range {
+
+    if start <= end {
+        return Range { start: start, end: end }
+    }
+
+    return Range { start: end, end: start }
+}
+
+proc collapsed(offset : int) -> Range {
+    return Range { start: offset, end: offset }
+}
+
+proc length(r : Range) -> int {
+    return r.end - r.start
+}
+
+proc is_empty(r : Range) -> bool {
+    return r.start == r.end
+}
+
+<<< ===================================================== >>
+<<< Relation Checks >>
+<<< ===================================================== >>>
+
+proc contains(r : Range, offset : int) -> bool {
+    return offset >= r.start and offset < r.end
+}
+
+proc overlaps(a : Range, b : Range) -> bool {
+    return a.start < b.end and b.start < a.end
+}
+
+proc touches(a : Range, b : Range) -> bool {
+    return a.end == b.start or b.end == a.start
+}
+
+proc equals(a : Range, b : Range) -> bool {
+    return a.start == b.start and a.end == b.end
+}
+
+<<< ===================================================== >>
+<<< Merge >>
+<<< ===================================================== >>>
+
+proc merge(a : Range, b : Range) -> Range {
+
+    let s =
+        if a.start < b.start { a.start } else { b.start }
+
+    let e =
+        if a.end > b.end { a.end } else { b.end }
+
+    return Range { start: s, end: e }
+}
+
+proc merge_if_overlapping(a : Range, b : Range) -> [bool] {
+
+    if overlaps(a, b) or touches(a, b) {
+        return [true, merge(a, b)]
+    }
+
+    return [false, a]
+}
+
+<<< ===================================================== >>
+<<< Subtract >>
+<<< ===================================================== >>>
+
+proc subtract(a : Range, b : Range) -> [Range] {
+
+    if not overlaps(a, b) {
+        return [a]
+    }
+
+    if b.start <= a.start and b.end >= a.end {
+        return []
+    }
+
+    if b.start <= a.start {
+        return [
+            Range {
+                start: b.end,
+                end: a.end
+            }
+        ]
+    }
+
+    if b.end >= a.end {
+        return [
+            Range {
+                start: a.start,
+                end: b.start
+            }
+        ]
+    }
+
+    return [
+        Range { start: a.start, end: b.start },
+        Range { start: b.end, end: a.end }
+    ]
+}
+
+<<< ===================================================== >>
+<<< Transform After Insert >>
+<<< ===================================================== >>>
+
+proc transform_after_insert(
+    r : Range,
+    pos : int,
+    len : int
+) -> Range {
+
+    if r.start >= pos {
+        set r.start = r.start + len
+    }
+
+    if r.end >= pos {
+        set r.end = r.end + len
+    }
+
+    return r
+}
+
+<<< ===================================================== >>
+<<< Transform After Delete >>
+<<< ===================================================== >>>
+
+proc transform_after_delete(
+    r : Range,
+    pos : int,
+    len : int
+) -> Range {
+
+    let del_end = pos + len
+
+    if r.start > pos {
+
+        if r.start < del_end {
+            set r.start = pos
+        } else {
+            set r.start = r.start - len
+        }
+    }
+
+    if r.end > pos {
+
+        if r.end < del_end {
+            set r.end = pos
+        } else {
+            set r.end = r.end - len
+        }
+    }
+
+    if r.start > r.end {
+        set r.start = r.end
+    }
+
+    return r
+}
+
+<<< ===================================================== >>
+<<< RangeSet Management >>
+<<< ===================================================== >>>
+
+proc new_set() -> RangeSet {
+    return RangeSet { ranges: [] }
+}
+
+proc add(set : RangeSet, r : Range) -> RangeSet {
+
+    set set.ranges =
+        set.ranges + [r]
+
+    return normalize(set)
+}
+
+proc normalize(set : RangeSet) -> RangeSet {
+
+    if set.ranges.length <= 1 {
+        return set
+    }
+
+    let i = 0
+
+    loop {
+
+        if i >= set.ranges.length - 1 {
+            break
+        }
+
+        let a = set.ranges[i]
+        let b = set.ranges[i + 1]
+
+        if overlaps(a, b) or touches(a, b) {
+
+            let merged = merge(a, b)
+
+            set set.ranges =
+                set.ranges[0:i] +
+                [merged] +
+                set.ranges[i+2:set.ranges.length]
+
+        } else {
+            set i = i + 1
+        }
+    }
+
+    return set
+}
+
+proc transform_set_after_insert(
+    set : RangeSet,
+    pos : int,
+    len : int
+) -> RangeSet {
+
+    let i = 0
+
+    loop {
+
+        if i >= set.ranges.length {
+            break
+        }
+
+        set set.ranges[i] =
+            transform_after_insert(
+                set.ranges[i],
+                pos,
+                len
+            )
+
+        set i = i + 1
+    }
+
+    return set
+}
+
+proc transform_set_after_delete(
+    set : RangeSet,
+    pos : int,
+    len : int
+) -> RangeSet {
+
+    let i = 0
+
+    loop {
+
+        if i >= set.ranges.length {
+            break
+        }
+
+        set set.ranges[i] =
+            transform_after_delete(
+                set.ranges[i],
+                pos,
+                len
+            )
+
+        set i = i + 1
+    }
+
+    return normalize(set)
 }

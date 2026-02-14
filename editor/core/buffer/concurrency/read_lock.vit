@@ -1,1 +1,187 @@
-#  lock-free read model
+space platon.editor.core.buffer.concurrency.read_lock
+
+<<< Read Lock Engine ULTRA MAX+++ >>>
+<<< Multi-reader, single-writer model, starvation tracking, contention metrics >>>
+
+form ReadLockState {
+    readers : int
+    writer_active : bool
+    blocked_readers : int
+    blocked_writers : int
+    version : int
+}
+
+let lock = ReadLockState {
+    readers: 0,
+    writer_active: false,
+    blocked_readers: 0,
+    blocked_writers: 0,
+    version: 1
+}
+
+<<< Acquire read lock >>>
+
+proc acquire_read() -> bool {
+
+    if lock.writer_active {
+
+        set lock.blocked_readers =
+            lock.blocked_readers + 1
+
+        return false
+    }
+
+    set lock.readers = lock.readers + 1
+    set lock.version = lock.version + 1
+
+    return true
+}
+
+<<< Release read lock >>>
+
+proc release_read() {
+
+    if lock.readers > 0 {
+        set lock.readers = lock.readers - 1
+        set lock.version = lock.version + 1
+    }
+}
+
+<<< Acquire write lock >>>
+
+proc acquire_write() -> bool {
+
+    if lock.writer_active or lock.readers > 0 {
+
+        set lock.blocked_writers =
+            lock.blocked_writers + 1
+
+        return false
+    }
+
+    set lock.writer_active = true
+    set lock.version = lock.version + 1
+
+    return true
+}
+
+<<< Release write lock >>>
+
+proc release_write() {
+
+    if lock.writer_active {
+        set lock.writer_active = false
+        set lock.version = lock.version + 1
+    }
+}
+
+<<< Check read lock availability >>>
+
+proc can_read() -> bool {
+    return not lock.writer_active
+}
+
+<<< Check write lock availability >>>
+
+proc can_write() -> bool {
+    return not lock.writer_active and lock.readers == 0
+}
+
+<<< Lock statistics accessors >>>
+
+proc total_blocked_readers() -> int {
+    return lock.blocked_readers
+}
+
+proc total_blocked_writers() -> int {
+    return lock.blocked_writers
+}
+
+proc active_readers() -> int {
+    return lock.readers
+}
+
+proc is_writer_active() -> bool {
+    return lock.writer_active
+}
+
+<<< Reset lock state >>>
+
+proc reset_lock() {
+
+    set lock.readers = 0
+    set lock.writer_active = false
+    set lock.blocked_readers = 0
+    set lock.blocked_writers = 0
+    set lock.version = 1
+}
+
+<<< Stress many readers >>>
+
+proc stress_readers(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        acquire_read()
+        release_read()
+
+        set i = i + 1
+    }
+}
+
+<<< Stress writer contention >>>
+
+proc stress_writer_contention(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        acquire_write()
+        release_write()
+
+        set i = i + 1
+    }
+}
+
+<<< Mixed contention simulation >>>
+
+proc stress_mixed(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        if i % 3 == 0 {
+            acquire_write()
+            release_write()
+        } else {
+            acquire_read()
+            release_read()
+        }
+
+        set i = i + 1
+    }
+}
+
+<<< Full read lock suite >>>
+
+proc run_read_lock_ultra() {
+
+    reset_lock()
+
+    stress_readers(100000)
+    stress_writer_contention(50000)
+    stress_mixed(100000)
+}

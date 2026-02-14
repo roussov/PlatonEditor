@@ -1,1 +1,276 @@
-#  line start/end logic
+space platon.editor.core.cursor.navigation.line_navigation
+
+pull platon.editor.core.buffer.buffer as buffer
+pull platon.editor.core.buffer.cursor as cursor
+
+<<< Line Navigation ULTRA MAX CORE >>>
+<<< Line-aware cursor movement with column preservation >>>
+
+
+<<< ===================================================== >>
+<<< Helpers >>
+<<< ===================================================== >>>
+
+proc is_newline(b : int) -> bool {
+    return b == 10 or b == 13
+}
+
+
+proc find_line_start(
+    text : string,
+    offset : int
+) -> int {
+
+    if offset <= 0 {
+        return 0
+    }
+
+    let i = offset - 1
+
+    loop {
+
+        if i < 0 {
+            break
+        }
+
+        if is_newline(text[i]) {
+            return i + 1
+        }
+
+        set i = i - 1
+    }
+
+    return 0
+}
+
+
+proc find_line_end(
+    text : string,
+    offset : int
+) -> int {
+
+    let i = offset
+
+    loop {
+
+        if i >= text.length {
+            break
+        }
+
+        if is_newline(text[i]) {
+            break
+        }
+
+        set i = i + 1
+    }
+
+    return i
+}
+
+
+proc compute_column(
+    text : string,
+    offset : int
+) -> int {
+
+    let start =
+        find_line_start(text, offset)
+
+    return offset - start
+}
+
+
+proc clamp_column(
+    text : string,
+    line_start : int,
+    desired_column : int
+) -> int {
+
+    let end =
+        find_line_end(text, line_start)
+
+    let max_col =
+        end - line_start
+
+    if desired_column > max_col {
+        return end
+    }
+
+    return line_start + desired_column
+}
+
+
+<<< ===================================================== >>
+<<< Vertical Movement >>
+<<< ===================================================== >>>
+
+proc move_up(
+    b : buffer.Buffer,
+    c : cursor.Cursor
+) -> cursor.Cursor {
+
+    let text =
+        buffer.as_string(b)
+
+    let current_start =
+        find_line_start(text, c.pos.offset)
+
+    if current_start == 0 {
+        return c
+    }
+
+    let desired_col =
+        compute_column(text, c.pos.offset)
+
+    let prev_line_end =
+        current_start - 1
+
+    let prev_line_start =
+        find_line_start(text, prev_line_end)
+
+    let new_offset =
+        clamp_column(
+            text,
+            prev_line_start,
+            desired_col
+        )
+
+    return cursor.move_to(
+        b,
+        c,
+        new_offset
+    )
+}
+
+
+proc move_down(
+    b : buffer.Buffer,
+    c : cursor.Cursor
+) -> cursor.Cursor {
+
+    let text =
+        buffer.as_string(b)
+
+    let current_end =
+        find_line_end(text, c.pos.offset)
+
+    if current_end >= text.length {
+        return c
+    }
+
+    let desired_col =
+        compute_column(text, c.pos.offset)
+
+    let next_line_start =
+        current_end + 1
+
+    if next_line_start >= text.length {
+        return c
+    }
+
+    let new_offset =
+        clamp_column(
+            text,
+            next_line_start,
+            desired_col
+        )
+
+    return cursor.move_to(
+        b,
+        c,
+        new_offset
+    )
+}
+
+
+<<< ===================================================== >>
+<<< Horizontal Line Helpers >>
+<<< ===================================================== >>>
+
+proc move_line_start(
+    b : buffer.Buffer,
+    c : cursor.Cursor
+) -> cursor.Cursor {
+
+    let text =
+        buffer.as_string(b)
+
+    let start =
+        find_line_start(text, c.pos.offset)
+
+    return cursor.move_to(
+        b,
+        c,
+        start
+    )
+}
+
+proc move_line_end(
+    b : buffer.Buffer,
+    c : cursor.Cursor
+) -> cursor.Cursor {
+
+    let text =
+        buffer.as_string(b)
+
+    let end =
+        find_line_end(text, c.pos.offset)
+
+    return cursor.move_to(
+        b,
+        c,
+        end
+    )
+}
+
+
+<<< ===================================================== >>
+<<< Line Metrics >>
+<<< ===================================================== >>>
+
+proc line_number(
+    text : string,
+    offset : int
+) -> int {
+
+    let i = 0
+    let line = 0
+
+    loop {
+
+        if i >= offset {
+            break
+        }
+
+        if is_newline(text[i]) {
+            set line = line + 1
+        }
+
+        set i = i + 1
+    }
+
+    return line
+}
+
+proc total_lines(
+    text : string
+) -> int {
+
+    let i = 0
+    let count = 1
+
+    loop {
+
+        if i >= text.length {
+            break
+        }
+
+        if is_newline(text[i]) {
+            set count = count + 1
+        }
+
+        set i = i + 1
+    }
+
+    return count
+}

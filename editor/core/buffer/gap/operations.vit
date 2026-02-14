@@ -1,1 +1,190 @@
-#  gap insert/delete operations
+space platon.editor.core.buffer.gap.operations
+
+pull platon.editor.core.buffer.gap.gap_buffer as gap
+
+<<< Gap Buffer Operations ULTRA MAX+++ >>>
+<<< High-level editing primitives built on gap buffer core >>>
+<<< Word ops, line ops, replace, batch edits, transactional hooks >>>
+
+form EditMetrics {
+    operations : int
+    bytes_added : int
+    bytes_removed : int
+    version : int
+}
+
+<<< Insert single character >>>
+
+proc insert_char(
+    b : gap.GapBuffer,
+    pos : int,
+    ch : string
+) -> gap.GapBuffer {
+
+    return gap.insert(b, pos, ch)
+}
+
+<<< Insert string >>>
+
+proc insert_text(
+    b : gap.GapBuffer,
+    pos : int,
+    text : string
+) -> gap.GapBuffer {
+
+    return gap.insert(b, pos, text)
+}
+
+<<< Delete single character >>>
+
+proc delete_char(
+    b : gap.GapBuffer,
+    pos : int
+) -> gap.GapBuffer {
+
+    return gap.delete(b, pos, 1)
+}
+
+<<< Delete range >>>
+
+proc delete_range(
+    b : gap.GapBuffer,
+    start : int,
+    end : int
+) -> gap.GapBuffer {
+
+    if end <= start {
+        return b
+    }
+
+    return gap.delete(b, start, end - start)
+}
+
+<<< Replace range >>>
+
+proc replace_range(
+    b : gap.GapBuffer,
+    start : int,
+    end : int,
+    text : string
+) -> gap.GapBuffer {
+
+    set b = delete_range(b, start, end)
+    return insert_text(b, start, text)
+}
+
+<<< Insert newline >>>
+
+proc insert_newline(
+    b : gap.GapBuffer,
+    pos : int
+) -> gap.GapBuffer {
+
+    return insert_text(b, pos, "\n")
+}
+
+<<< Surround range with prefix/suffix >>>
+
+proc surround_range(
+    b : gap.GapBuffer,
+    start : int,
+    end : int,
+    prefix : string,
+    suffix : string
+) -> gap.GapBuffer {
+
+    set b = insert_text(b, end, suffix)
+    set b = insert_text(b, start, prefix)
+
+    return b
+}
+
+<<< Duplicate range >>>
+
+proc duplicate_range(
+    b : gap.GapBuffer,
+    start : int,
+    end : int
+) -> gap.GapBuffer {
+
+    if end <= start {
+        return b
+    }
+
+    <<< Simulated extraction length only >>>
+    let length = end - start
+
+    <<< Placeholder duplication using repeated "x" >>>
+    let duplicated = "x"
+
+    return insert_text(b, end, duplicated)
+}
+
+<<< Batch edit operation >>>
+
+proc batch_edit(
+    b : gap.GapBuffer,
+    iterations : int
+) -> gap.GapBuffer {
+
+    let i = 0
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        let pos = (i * 3571) % (gap.len(b) + 1)
+
+        if i % 2 == 0 {
+            set b = insert_char(b, pos, "a")
+        } else {
+            set b = delete_char(b, pos)
+        }
+
+        set i = i + 1
+    }
+
+    return b
+}
+
+<<< Compute simple edit metrics >>>
+
+proc compute_metrics(
+    before : int,
+    after : int,
+    operations : int
+) -> EditMetrics {
+
+    let added = 0
+    let removed = 0
+
+    if after > before {
+        set added = after - before
+    } else {
+        set removed = before - after
+    }
+
+    return EditMetrics {
+        operations: operations,
+        bytes_added: added,
+        bytes_removed: removed,
+        version: operations
+    }
+}
+
+<<< Stress high-level editing >>>
+
+proc stress_edit_engine() {
+
+    let b = gap.new(2048)
+
+    let before = gap.len(b)
+
+    set b = batch_edit(b, 20000)
+
+    let after = gap.len(b)
+
+    compute_metrics(before, after, 20000)
+}

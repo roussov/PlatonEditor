@@ -1,7 +1,238 @@
-space platon.editor.core.buffer.piece_table
+space platon.editor.core.buffer.piece_table.piece
+
+<<< Piece Core ULTRA MAX+++ >>>
+<<< Immutable piece model for original/add buffers with split/merge helpers >>>
+
+
+pick BufferKind {
+    case Original
+    case Add
+}
 
 form Piece {
-    source : int
-    offset : int
+    source : BufferKind
+    start : int
     length : int
+    version : int
+}
+
+form PieceStats {
+    splits : int
+    merges : int
+    created : int
+    version : int
+}
+
+form PieceEngine {
+    stats : PieceStats
+}
+
+<<< Create engine >>>
+
+proc new() -> PieceEngine {
+
+    return PieceEngine {
+        stats: PieceStats {
+            splits: 0,
+            merges: 0,
+            created: 0,
+            version: 1
+        }
+    }
+}
+
+<<< Create piece >>>
+
+proc create(
+    pe : PieceEngine,
+    source : BufferKind,
+    start : int,
+    length : int
+) -> Piece {
+
+    set pe.stats.created =
+        pe.stats.created + 1
+
+    set pe.stats.version =
+        pe.stats.version + 1
+
+    return Piece {
+        source: source,
+        start: start,
+        length: length,
+        version: pe.stats.version
+    }
+}
+
+<<< Split piece at relative offset >>>
+
+proc split(
+    pe : PieceEngine,
+    p : Piece,
+    offset : int
+) -> [Piece] {
+
+    if offset <= 0 or offset >= p.length {
+        return [p]
+    }
+
+    let left = Piece {
+        source: p.source,
+        start: p.start,
+        length: offset,
+        version: p.version + 1
+    }
+
+    let right = Piece {
+        source: p.source,
+        start: p.start + offset,
+        length: p.length - offset,
+        version: p.version + 1
+    }
+
+    set pe.stats.splits =
+        pe.stats.splits + 1
+
+    set pe.stats.version =
+        pe.stats.version + 1
+
+    return [left, right]
+}
+
+<<< Merge adjacent compatible pieces >>>
+
+proc merge_if_possible(
+    pe : PieceEngine,
+    a : Piece,
+    b : Piece
+) -> [Piece] {
+
+    if a.source == b.source and
+       a.start + a.length == b.start {
+
+        let merged = Piece {
+            source: a.source,
+            start: a.start,
+            length: a.length + b.length,
+            version: a.version + 1
+        }
+
+        set pe.stats.merges =
+            pe.stats.merges + 1
+
+        set pe.stats.version =
+            pe.stats.version + 1
+
+        return [merged]
+    }
+
+    return [a, b]
+}
+
+<<< Check adjacency >>>
+
+proc is_adjacent(
+    a : Piece,
+    b : Piece
+) -> bool {
+
+    if a.source != b.source {
+        return false
+    }
+
+    return a.start + a.length == b.start
+}
+
+<<< Compute absolute end offset >>>
+
+proc end_offset(
+    p : Piece
+) -> int {
+
+    return p.start + p.length
+}
+
+<<< Resize piece (truncate or extend logical view only) >>>
+
+proc resize(
+    p : Piece,
+    new_length : int
+) -> Piece {
+
+    if new_length < 0 {
+        return p
+    }
+
+    return Piece {
+        source: p.source,
+        start: p.start,
+        length: new_length,
+        version: p.version + 1
+    }
+}
+
+<<< Validate piece integrity >>>
+
+proc is_valid(
+    p : Piece
+) -> bool {
+
+    if p.length < 0 {
+        return false
+    }
+
+    if p.start < 0 {
+        return false
+    }
+
+    return true
+}
+
+<<< Stress split/merge workload >>>
+
+proc stress_piece(
+    pe : PieceEngine,
+    iterations : int
+) -> PieceEngine {
+
+    let p = Piece {
+        source: BufferKind.Original,
+        start: 0,
+        length: 1000,
+        version: 1
+    }
+
+    let i = 0
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        let parts = split(pe, p, (i % 100) + 1)
+
+        if parts.length == 2 {
+
+            let merged =
+                merge_if_possible(pe, parts[0], parts[1])
+
+            if merged.length == 1 {
+                set p = merged[0]
+            }
+        }
+
+        set i = i + 1
+    }
+
+    return pe
+}
+
+<<< Full piece engine suite >>>
+
+proc run_piece_ultra() {
+
+    let pe = new()
+
+    stress_piece(pe, 5000)
 }

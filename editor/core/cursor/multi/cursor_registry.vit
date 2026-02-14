@@ -1,1 +1,296 @@
-#  manage multiple cursors
+space platon.editor.core.cursor.multi.cursor_registry
+
+pull platon.editor.core.cursor.cursor as cursor
+
+<<< Cursor Registry ULTRA MAX CORE >>>
+<<< Multi-buffer + multi-client + scalable registry >>>
+
+
+<<< ===================================================== >>
+<<< Models >>
+<<< ===================================================== >>>
+
+form CursorOwner {
+    id        : string
+    buffer_id : string
+    set       : cursor.CursorSet
+}
+
+form CursorRegistry {
+    owners    : [CursorOwner]
+    capacity  : int
+}
+
+const DEFAULT_CAPACITY : int = 1024
+
+
+<<< ===================================================== >>
+<<< Initialization >>
+<<< ===================================================== >>>
+
+proc new() -> CursorRegistry {
+
+    return CursorRegistry {
+        owners: [],
+        capacity: DEFAULT_CAPACITY
+    }
+}
+
+
+<<< ===================================================== >>
+<<< Internal Helpers >>
+<<< ===================================================== >>>
+
+proc find_owner_index(
+    reg : CursorRegistry,
+    id : string
+) -> int {
+
+    let i = 0
+
+    loop {
+
+        if i >= reg.owners.length {
+            break
+        }
+
+        if reg.owners[i].id == id {
+            return i
+        }
+
+        set i = i + 1
+    }
+
+    return -1
+}
+
+proc ensure_capacity(reg : CursorRegistry) -> CursorRegistry {
+
+    if reg.owners.length < reg.capacity {
+        return reg
+    }
+
+    <<< Drop oldest owner >>>
+
+    set reg.owners =
+        reg.owners[1:reg.owners.length]
+
+    return reg
+}
+
+
+<<< ===================================================== >>
+<<< Register / Update Owner >>
+<<< ===================================================== >>>
+
+proc register_owner(
+    reg : CursorRegistry,
+    id : string,
+    buffer_id : string
+) -> CursorRegistry {
+
+    let idx =
+        find_owner_index(reg, id)
+
+    if idx >= 0 {
+
+        set reg.owners[idx].buffer_id = buffer_id
+
+        return reg
+    }
+
+    set reg =
+        ensure_capacity(reg)
+
+    let owner =
+        CursorOwner {
+            id: id,
+            buffer_id: buffer_id,
+            set: cursor.new_set()
+        }
+
+    set reg.owners =
+        reg.owners + [owner]
+
+    return reg
+}
+
+proc update_set(
+    reg : CursorRegistry,
+    id : string,
+    set_value : cursor.CursorSet
+) -> CursorRegistry {
+
+    let idx =
+        find_owner_index(reg, id)
+
+    if idx < 0 {
+        return reg
+    }
+
+    set reg.owners[idx].set = set_value
+
+    return reg
+}
+
+
+<<< ===================================================== >>
+<<< Remove Owner >>
+<<< ===================================================== >>>
+
+proc remove_owner(
+    reg : CursorRegistry,
+    id : string
+) -> CursorRegistry {
+
+    let idx =
+        find_owner_index(reg, id)
+
+    if idx < 0 {
+        return reg
+    }
+
+    set reg.owners =
+        reg.owners[0:idx] +
+        reg.owners[idx+1:reg.owners.length]
+
+    return reg
+}
+
+
+<<< ===================================================== >>
+<<< Query By Owner >>
+<<< ===================================================== >>>
+
+proc get_owner(
+    reg : CursorRegistry,
+    id : string
+) -> [bool] {
+
+    let idx =
+        find_owner_index(reg, id)
+
+    if idx < 0 {
+
+        return [
+            false,
+            CursorOwner {
+                id: "",
+                buffer_id: "",
+                set: cursor.new_set()
+            }
+        ]
+    }
+
+    return [true, reg.owners[idx]]
+}
+
+
+<<< ===================================================== >>
+<<< Query By Buffer >>
+<<< ===================================================== >>>
+
+proc owners_for_buffer(
+    reg : CursorRegistry,
+    buffer_id : string
+) -> [CursorOwner] {
+
+    let result = []
+    let i = 0
+
+    loop {
+
+        if i >= reg.owners.length {
+            break
+        }
+
+        if reg.owners[i].buffer_id == buffer_id {
+
+            set result =
+                result + [reg.owners[i]]
+        }
+
+        set i = i + 1
+    }
+
+    return result
+}
+
+
+<<< ===================================================== >>
+<<< Broadcast Adjustment >>
+<<< ===================================================== >>>
+
+proc adjust_buffer_insert(
+    reg : CursorRegistry,
+    buffer_id : string,
+    pos : int,
+    len : int
+) -> CursorRegistry {
+
+    let i = 0
+
+    loop {
+
+        if i >= reg.owners.length {
+            break
+        }
+
+        if reg.owners[i].buffer_id == buffer_id {
+
+            set reg.owners[i].set =
+                cursor.adjust_set_after_insert(
+                    reg.owners[i].set,
+                    pos,
+                    len
+                )
+        }
+
+        set i = i + 1
+    }
+
+    return reg
+}
+
+proc adjust_buffer_delete(
+    reg : CursorRegistry,
+    buffer_id : string,
+    pos : int,
+    len : int
+) -> CursorRegistry {
+
+    let i = 0
+
+    loop {
+
+        if i >= reg.owners.length {
+            break
+        }
+
+        if reg.owners[i].buffer_id == buffer_id {
+
+            set reg.owners[i].set =
+                cursor.adjust_set_after_delete(
+                    reg.owners[i].set,
+                    pos,
+                    len
+                )
+        }
+
+        set i = i + 1
+    }
+
+    return reg
+}
+
+
+<<< ===================================================== >>
+<<< Clear Registry >>
+<<< ===================================================== >>>
+
+proc clear(reg : CursorRegistry) -> CursorRegistry {
+
+    set reg.owners = []
+
+    return reg
+}

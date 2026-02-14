@@ -1,1 +1,361 @@
-#  piece table management
+space platon.editor.core.buffer.piece_table.table
+
+pull platon.editor.core.buffer.piece_table.piece as piece
+
+<<< Piece Table Core ULTRA MAX+++ >>>
+<<< Insert/Delete/Replace with piece list management and offset mapping >>>
+
+
+form PieceTable {
+    original : string
+    add_buffer : string
+    pieces : [piece.Piece]
+    total_length : int
+    version : int
+}
+
+form TableStats {
+    inserts : int
+    deletes : int
+    replaces : int
+    splits : int
+    merges : int
+    version : int
+}
+
+form TableEngine {
+    stats : TableStats
+}
+
+<<< Create new piece table >>>
+
+proc new(initial_text : string) -> PieceTable {
+
+    let p = piece.Piece {
+        source: piece.BufferKind.Original,
+        start: 0,
+        length: initial_text.length,
+        version: 1
+    }
+
+    return PieceTable {
+        original: initial_text,
+        add_buffer: "",
+        pieces: [p],
+        total_length: initial_text.length,
+        version: 1
+    }
+}
+
+proc new_engine() -> TableEngine {
+
+    return TableEngine {
+        stats: TableStats {
+            inserts: 0,
+            deletes: 0,
+            replaces: 0,
+            splits: 0,
+            merges: 0,
+            version: 1
+        }
+    }
+}
+
+<<< Find piece index and local offset from global offset >>>
+
+proc find_piece_index(
+    pt : PieceTable,
+    offset : int
+) -> [int] {
+
+    let acc = 0
+    let i = 0
+
+    loop {
+
+        if i >= pt.pieces.length {
+            break
+        }
+
+        let p = pt.pieces[i]
+
+        if offset < acc + p.length {
+            return [i, offset - acc]
+        }
+
+        set acc = acc + p.length
+        set i = i + 1
+    }
+
+    return [-1, -1]
+}
+
+<<< Insert text at offset >>>
+
+proc insert(
+    te : TableEngine,
+    pt : PieceTable,
+    offset : int,
+    text : string
+) -> PieceTable {
+
+    if offset < 0 or offset > pt.total_length {
+        return pt
+    }
+
+    let pos = find_piece_index(pt, offset)
+
+    let index = pos[0]
+    let local = pos[1]
+
+    set pt.add_buffer =
+        pt.add_buffer + text
+
+    let new_piece = piece.Piece {
+        source: piece.BufferKind.Add,
+        start: pt.add_buffer.length - text.length,
+        length: text.length,
+        version: pt.version + 1
+    }
+
+    let new_list : [piece.Piece] = []
+
+    let i = 0
+
+    loop {
+
+        if i >= pt.pieces.length {
+            break
+        }
+
+        if i == index and local != 0 {
+
+            let parts =
+                piece.split(
+                    piece.new(),
+                    pt.pieces[i],
+                    local
+                )
+
+            set new_list =
+                new_list + [parts[0]]
+
+            set new_list =
+                new_list + [new_piece]
+
+            set new_list =
+                new_list + [parts[1]]
+
+            set te.stats.splits =
+                te.stats.splits + 1
+
+        } else if i == index and local == 0 {
+
+            set new_list =
+                new_list + [new_piece]
+
+            set new_list =
+                new_list + [pt.pieces[i]]
+
+        } else {
+
+            set new_list =
+                new_list + [pt.pieces[i]]
+        }
+
+        set i = i + 1
+    }
+
+    set pt.pieces = new_list
+    set pt.total_length =
+        pt.total_length + text.length
+
+    set pt.version = pt.version + 1
+
+    set te.stats.inserts =
+        te.stats.inserts + 1
+
+    set te.stats.version =
+        te.stats.version + 1
+
+    return pt
+}
+
+<<< Delete range >>>
+
+proc delete(
+    te : TableEngine,
+    pt : PieceTable,
+    offset : int,
+    length : int
+) -> PieceTable {
+
+    if length <= 0 {
+        return pt
+    }
+
+    let end_offset = offset + length
+
+    let acc = 0
+    let new_list : [piece.Piece] = []
+
+    let i = 0
+
+    loop {
+
+        if i >= pt.pieces.length {
+            break
+        }
+
+        let p = pt.pieces[i]
+        let piece_start = acc
+        let piece_end = acc + p.length
+
+        if piece_end <= offset or
+           piece_start >= end_offset {
+
+            set new_list =
+                new_list + [p]
+
+        } else {
+
+            let local_start =
+                offset - piece_start
+
+            let local_end =
+                end_offset - piece_start
+
+            if local_start > 0 {
+
+                let left =
+                    piece.Piece {
+                        source: p.source,
+                        start: p.start,
+                        length: local_start,
+                        version: p.version + 1
+                    }
+
+                set new_list =
+                    new_list + [left]
+            }
+
+            if local_end < p.length {
+
+                let right =
+                    piece.Piece {
+                        source: p.source,
+                        start: p.start + local_end,
+                        length: p.length - local_end,
+                        version: p.version + 1
+                    }
+
+                set new_list =
+                    new_list + [right]
+            }
+
+            set te.stats.splits =
+                te.stats.splits + 1
+        }
+
+        set acc = acc + p.length
+        set i = i + 1
+    }
+
+    set pt.pieces = new_list
+    set pt.total_length =
+        pt.total_length - length
+
+    set pt.version = pt.version + 1
+
+    set te.stats.deletes =
+        te.stats.deletes + 1
+
+    set te.stats.version =
+        te.stats.version + 1
+
+    return pt
+}
+
+<<< Replace range >>>
+
+proc replace(
+    te : TableEngine,
+    pt : PieceTable,
+    offset : int,
+    length : int,
+    text : string
+) -> PieceTable {
+
+    set pt =
+        delete(te, pt, offset, length)
+
+    set pt =
+        insert(te, pt, offset, text)
+
+    set te.stats.replaces =
+        te.stats.replaces + 1
+
+    return pt
+}
+
+<<< Materialize full text (slow path) >>>
+
+proc materialize(
+    pt : PieceTable
+) -> string {
+
+    let result = ""
+    let i = 0
+
+    loop {
+
+        if i >= pt.pieces.length {
+            break
+        }
+
+        let p = pt.pieces[i]
+
+        if p.source ==
+           piece.BufferKind.Original {
+
+            set result =
+                result +
+                pt.original.substring(
+                    p.start,
+                    p.start + p.length
+                )
+
+        } else {
+
+            set result =
+                result +
+                pt.add_buffer.substring(
+                    p.start,
+                    p.start + p.length
+                )
+        }
+
+        set i = i + 1
+    }
+
+    return result
+}
+
+<<< Full piece table suite >>>
+
+proc run_piece_table_ultra() {
+
+    let te = new_engine()
+    let pt = new("Hello World")
+
+    set pt =
+        insert(te, pt, 5, " Massive")
+
+    set pt =
+        delete(te, pt, 0, 2)
+
+    set pt =
+        replace(te, pt, 3, 4, "Ultra")
+
+    materialize(pt)
+}

@@ -1,1 +1,353 @@
-#  object pool
+space platon.editor.core.buffer.memory.pool
+
+<<< Memory Pool ULTRA MAX+++ >>>
+<<< Fixed-size object pool, slab expansion, reuse tracking, pressure metrics >>>
+
+form PoolSlot {
+    used : bool
+}
+
+form PoolBlock {
+    capacity : int
+    slots : [PoolSlot]
+    used_count : int
+}
+
+form PoolStats {
+    allocations : int
+    deallocations : int
+    expansions : int
+    reuse_hits : int
+    high_watermark : int
+    version : int
+}
+
+form Pool {
+    blocks : [PoolBlock]
+    object_size : int
+    block_size : int
+    stats : PoolStats
+}
+
+const DEFAULT_BLOCK_OBJECTS : int = 1024
+
+<<< Create new pool >>>
+
+proc new(
+    object_size : int,
+    block_size : int
+) -> Pool {
+
+    let size = block_size
+
+    if size <= 0 {
+        set size = DEFAULT_BLOCK_OBJECTS
+    }
+
+    let slots : [PoolSlot] = []
+
+    let i = 0
+
+    loop {
+
+        if i >= size {
+            break
+        }
+
+        set slots = slots + [PoolSlot { used: false }]
+
+        set i = i + 1
+    }
+
+    return Pool {
+        blocks: [
+            PoolBlock {
+                capacity: size,
+                slots: slots,
+                used_count: 0
+            }
+        ],
+        object_size: object_size,
+        block_size: size,
+        stats: PoolStats {
+            allocations: 0,
+            deallocations: 0,
+            expansions: 0,
+            reuse_hits: 0,
+            high_watermark: 0,
+            version: 1
+        }
+    }
+}
+
+<<< Allocate slot >>>
+
+proc alloc(p : Pool) -> Pool {
+
+    let b = 0
+
+    loop {
+
+        if b >= p.blocks.length {
+            break
+        }
+
+        let block = p.blocks[b]
+
+        if block.used_count < block.capacity {
+
+            let i = 0
+
+            loop {
+
+                if i >= block.capacity {
+                    break
+                }
+
+                let slot = block.slots[i]
+
+                if not slot.used {
+
+                    set slot.used = true
+                    set block.slots[i] = slot
+                    set block.used_count =
+                        block.used_count + 1
+
+                    set p.blocks[b] = block
+
+                    set p.stats.allocations =
+                        p.stats.allocations + 1
+
+                    set p.stats.reuse_hits =
+                        p.stats.reuse_hits + 1
+
+                    if block.used_count >
+                       p.stats.high_watermark {
+
+                        set p.stats.high_watermark =
+                            block.used_count
+                    }
+
+                    set p.stats.version =
+                        p.stats.version + 1
+
+                    return p
+                }
+
+                set i = i + 1
+            }
+        }
+
+        set b = b + 1
+    }
+
+    <<< No free slot found, expand pool >>>
+
+    let new_slots : [PoolSlot] = []
+
+    let j = 0
+
+    loop {
+
+        if j >= p.block_size {
+            break
+        }
+
+        set new_slots =
+            new_slots + [PoolSlot { used: false }]
+
+        set j = j + 1
+    }
+
+    set p.blocks =
+        p.blocks +
+        [PoolBlock {
+            capacity: p.block_size,
+            slots: new_slots,
+            used_count: 0
+        }]
+
+    set p.stats.expansions =
+        p.stats.expansions + 1
+
+    set p.stats.version =
+        p.stats.version + 1
+
+    return alloc(p)
+}
+
+<<< Deallocate slot (first used slot simulation) >>>
+
+proc free_one(p : Pool) -> Pool {
+
+    let b = 0
+
+    loop {
+
+        if b >= p.blocks.length {
+            break
+        }
+
+        let block = p.blocks[b]
+
+        if block.used_count > 0 {
+
+            let i = 0
+
+            loop {
+
+                if i >= block.capacity {
+                    break
+                }
+
+                let slot = block.slots[i]
+
+                if slot.used {
+
+                    set slot.used = false
+                    set block.slots[i] = slot
+                    set block.used_count =
+                        block.used_count - 1
+
+                    set p.blocks[b] = block
+
+                    set p.stats.deallocations =
+                        p.stats.deallocations + 1
+
+                    set p.stats.version =
+                        p.stats.version + 1
+
+                    return p
+                }
+
+                set i = i + 1
+            }
+        }
+
+        set b = b + 1
+    }
+
+    return p
+}
+
+<<< Compute total allocated objects >>>
+
+proc total_allocated(p : Pool) -> int {
+
+    let total = 0
+    let b = 0
+
+    loop {
+
+        if b >= p.blocks.length {
+            break
+        }
+
+        set total =
+            total + p.blocks[b].used_count
+
+        set b = b + 1
+    }
+
+    return total
+}
+
+<<< Compute total capacity >>>
+
+proc total_capacity(p : Pool) -> int {
+
+    return p.blocks.length * p.block_size
+}
+
+<<< Pool pressure ratio (percentage * 100) >>>
+
+proc pressure(p : Pool) -> int {
+
+    let used = total_allocated(p)
+    let cap = total_capacity(p)
+
+    if cap == 0 {
+        return 0
+    }
+
+    return (used * 100) / cap
+}
+
+<<< Reset pool (soft reset) >>>
+
+proc reset(p : Pool) -> Pool {
+
+    let b = 0
+
+    loop {
+
+        if b >= p.blocks.length {
+            break
+        }
+
+        let block = p.blocks[b]
+
+        let i = 0
+
+        loop {
+
+            if i >= block.capacity {
+                break
+            }
+
+            let slot = block.slots[i]
+            set slot.used = false
+            set block.slots[i] = slot
+
+            set i = i + 1
+        }
+
+        set block.used_count = 0
+        set p.blocks[b] = block
+
+        set b = b + 1
+    }
+
+    set p.stats.version =
+        p.stats.version + 1
+
+    return p
+}
+
+<<< Stress pool usage >>>
+
+proc stress_pool(
+    p : Pool,
+    iterations : int
+) -> Pool {
+
+    let i = 0
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        set p = alloc(p)
+
+        if i % 3 == 0 {
+            set p = free_one(p)
+        }
+
+        set i = i + 1
+    }
+
+    return p
+}
+
+<<< Full pool test suite >>>
+
+proc run_pool_ultra() {
+
+    let p = new(64, DEFAULT_BLOCK_OBJECTS)
+
+    let p2 = stress_pool(p, 10000)
+
+    reset(p2)
+}

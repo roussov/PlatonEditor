@@ -1,1 +1,366 @@
-#  buffer pooling system
+space platon.editor.core.buffer.multi.buffer_pool
+
+pull platon.editor.core.buffer.gap.gap_buffer as gap
+
+<<< Multi Buffer Pool ULTRA MAX+++ >>>
+<<< Manages multiple buffers, lifecycle, active switching, metrics, reuse >>>
+
+
+form BufferEntry {
+    id : int
+    name : string
+    buffer : gap.GapBuffer
+    dirty : bool
+    pinned : bool
+    version : int
+}
+
+form PoolStats {
+    created : int
+    destroyed : int
+    switches : int
+    reuses : int
+    active_changes : int
+    version : int
+}
+
+form BufferPool {
+    entries : [BufferEntry]
+    active_id : int
+    next_id : int
+    stats : PoolStats
+}
+
+<<< Create new buffer pool >>>
+
+proc new() -> BufferPool {
+
+    return BufferPool {
+        entries: [],
+        active_id: -1,
+        next_id: 1,
+        stats: PoolStats {
+            created: 0,
+            destroyed: 0,
+            switches: 0,
+            reuses: 0,
+            active_changes: 0,
+            version: 1
+        }
+    }
+}
+
+<<< Create new buffer >>>
+
+proc create_buffer(
+    bp : BufferPool,
+    name : string,
+    capacity : int
+) -> BufferPool {
+
+    let id = bp.next_id
+
+    let entry = BufferEntry {
+        id: id,
+        name: name,
+        buffer: gap.new(capacity),
+        dirty: false,
+        pinned: false,
+        version: 1
+    }
+
+    set bp.entries = bp.entries + [entry]
+    set bp.active_id = id
+    set bp.next_id = id + 1
+
+    set bp.stats.created =
+        bp.stats.created + 1
+
+    set bp.stats.active_changes =
+        bp.stats.active_changes + 1
+
+    set bp.stats.version =
+        bp.stats.version + 1
+
+    return bp
+}
+
+<<< Find entry index by id >>>
+
+proc find_index(
+    bp : BufferPool,
+    id : int
+) -> int {
+
+    let i = 0
+
+    loop {
+
+        if i >= bp.entries.length {
+            break
+        }
+
+        if bp.entries[i].id == id {
+            return i
+        }
+
+        set i = i + 1
+    }
+
+    return -1
+}
+
+<<< Switch active buffer >>>
+
+proc switch_active(
+    bp : BufferPool,
+    id : int
+) -> BufferPool {
+
+    let idx = find_index(bp, id)
+
+    if idx == -1 {
+        return bp
+    }
+
+    set bp.active_id = id
+
+    set bp.stats.switches =
+        bp.stats.switches + 1
+
+    set bp.stats.active_changes =
+        bp.stats.active_changes + 1
+
+    set bp.stats.version =
+        bp.stats.version + 1
+
+    return bp
+}
+
+<<< Get active buffer entry >>>
+
+proc active(
+    bp : BufferPool
+) -> BufferEntry {
+
+    let idx = find_index(bp, bp.active_id)
+
+    if idx == -1 {
+
+        return BufferEntry {
+            id: -1,
+            name: "",
+            buffer: gap.new(1),
+            dirty: false,
+            pinned: false,
+            version: 0
+        }
+    }
+
+    return bp.entries[idx]
+}
+
+<<< Mark buffer dirty >>>
+
+proc mark_dirty(
+    bp : BufferPool,
+    id : int
+) -> BufferPool {
+
+    let idx = find_index(bp, id)
+
+    if idx == -1 {
+        return bp
+    }
+
+    let entry = bp.entries[idx]
+
+    set entry.dirty = true
+    set entry.version = entry.version + 1
+
+    set bp.entries[idx] = entry
+
+    return bp
+}
+
+<<< Close buffer (if not pinned) >>>
+
+proc close_buffer(
+    bp : BufferPool,
+    id : int
+) -> BufferPool {
+
+    let idx = find_index(bp, id)
+
+    if idx == -1 {
+        return bp
+    }
+
+    let entry = bp.entries[idx]
+
+    if entry.pinned {
+        return bp
+    }
+
+    <<< Remove entry >>>
+    let new_entries : [BufferEntry] = []
+
+    let i = 0
+
+    loop {
+
+        if i >= bp.entries.length {
+            break
+        }
+
+        if bp.entries[i].id != id {
+            set new_entries =
+                new_entries + [bp.entries[i]]
+        }
+
+        set i = i + 1
+    }
+
+    set bp.entries = new_entries
+
+    if bp.active_id == id {
+        set bp.active_id = -1
+    }
+
+    set bp.stats.destroyed =
+        bp.stats.destroyed + 1
+
+    set bp.stats.version =
+        bp.stats.version + 1
+
+    return bp
+}
+
+<<< Pin buffer (prevent closing) >>>
+
+proc pin(
+    bp : BufferPool,
+    id : int
+) -> BufferPool {
+
+    let idx = find_index(bp, id)
+
+    if idx == -1 {
+        return bp
+    }
+
+    let entry = bp.entries[idx]
+
+    set entry.pinned = true
+    set bp.entries[idx] = entry
+
+    return bp
+}
+
+<<< Unpin buffer >>>
+
+proc unpin(
+    bp : BufferPool,
+    id : int
+) -> BufferPool {
+
+    let idx = find_index(bp, id)
+
+    if idx == -1 {
+        return bp
+    }
+
+    let entry = bp.entries[idx]
+
+    set entry.pinned = false
+    set bp.entries[idx] = entry
+
+    return bp
+}
+
+<<< Reuse closed slot simulation (metric only) >>>
+
+proc reuse_metric(bp : BufferPool) -> BufferPool {
+
+    set bp.stats.reuses =
+        bp.stats.reuses + 1
+
+    set bp.stats.version =
+        bp.stats.version + 1
+
+    return bp
+}
+
+<<< Accessors >>>
+
+proc total_buffers(bp : BufferPool) -> int {
+    return bp.entries.length
+}
+
+proc active_buffer_id(bp : BufferPool) -> int {
+    return bp.active_id
+}
+
+proc total_created(bp : BufferPool) -> int {
+    return bp.stats.created
+}
+
+proc total_destroyed(bp : BufferPool) -> int {
+    return bp.stats.destroyed
+}
+
+proc total_switches(bp : BufferPool) -> int {
+    return bp.stats.switches
+}
+
+<<< Stress multi-buffer workload >>>
+
+proc stress_pool(
+    bp : BufferPool,
+    iterations : int
+) -> BufferPool {
+
+    let i = 0
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        if i % 5 == 0 {
+
+            set bp =
+                create_buffer(bp, "file", 1024)
+
+        } else if i % 3 == 0 {
+
+            if bp.active_id != -1 {
+                set bp =
+                    close_buffer(bp, bp.active_id)
+            }
+
+        } else {
+
+            if bp.entries.length > 0 {
+                let id =
+                    bp.entries[0].id
+                set bp =
+                    switch_active(bp, id)
+            }
+        }
+
+        set i = i + 1
+    }
+
+    return bp
+}
+
+<<< Full buffer pool suite >>>
+
+proc run_buffer_pool_ultra() {
+
+    let bp = new()
+
+    stress_pool(bp, 2000)
+}

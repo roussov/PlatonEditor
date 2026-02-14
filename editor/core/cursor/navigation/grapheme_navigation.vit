@@ -1,1 +1,278 @@
-#  unicode grapheme navigation
+space platon.editor.core.cursor.navigation.grapheme_navigation
+
+pull platon.editor.core.buffer.buffer as buffer
+pull platon.editor.core.buffer.cursor as cursor
+
+<<< Grapheme Navigation ULTRA MAX >>>
+<<< Unicode-aware grapheme cluster movement (UAX-29 inspired) >>>
+
+
+<<< ===================================================== >>
+<<< UTF-8 Utilities >>
+<<< ===================================================== >>>
+
+proc is_continuation_byte(b : int) -> bool {
+    return (b & 0b11000000) == 0b10000000
+}
+
+proc prev_codepoint_start(text : string, offset : int) -> int {
+
+    if offset <= 0 {
+        return 0
+    }
+
+    let i = offset - 1
+
+    loop {
+        if i <= 0 {
+            break
+        }
+
+        if not is_continuation_byte(text[i]) {
+            break
+        }
+
+        set i = i - 1
+    }
+
+    return i
+}
+
+proc next_codepoint_start(text : string, offset : int) -> int {
+
+    if offset >= text.length {
+        return text.length
+    }
+
+    let i = offset + 1
+
+    loop {
+        if i >= text.length {
+            break
+        }
+
+        if not is_continuation_byte(text[i]) {
+            break
+        }
+
+        set i = i + 1
+    }
+
+    return i
+}
+
+proc decode(text : string, offset : int) -> int {
+
+    let b0 = text[offset]
+
+    if (b0 & 0b10000000) == 0 {
+        return b0
+    }
+
+    if (b0 & 0b11100000) == 0b11000000 {
+        let b1 = text[offset + 1]
+        return ((b0 & 0b00011111) << 6) |
+               (b1 & 0b00111111)
+    }
+
+    if (b0 & 0b11110000) == 0b11100000 {
+        let b1 = text[offset + 1]
+        let b2 = text[offset + 2]
+        return ((b0 & 0b00001111) << 12) |
+               ((b1 & 0b00111111) << 6) |
+               (b2 & 0b00111111)
+    }
+
+    let b1 = text[offset + 1]
+    let b2 = text[offset + 2]
+    let b3 = text[offset + 3]
+
+    return ((b0 & 0b00000111) << 18) |
+           ((b1 & 0b00111111) << 12) |
+           ((b2 & 0b00111111) << 6) |
+           (b3 & 0b00111111)
+}
+
+
+<<< ===================================================== >>
+<<< Grapheme Classification >>
+<<< ===================================================== >>>
+
+proc is_combining(cp : int) -> bool {
+
+    if cp >= 0x0300 and cp <= 0x036F { return true }
+    if cp >= 0x1AB0 and cp <= 0x1AFF { return true }
+    if cp >= 0x1DC0 and cp <= 0x1DFF { return true }
+    if cp >= 0x20D0 and cp <= 0x20FF { return true }
+    if cp >= 0xFE20 and cp <= 0xFE2F { return true }
+
+    return false
+}
+
+proc is_variation_selector(cp : int) -> bool {
+
+    if cp >= 0xFE00 and cp <= 0xFE0F { return true }
+    if cp >= 0xE0100 and cp <= 0xE01EF { return true }
+
+    return false
+}
+
+proc is_zwj(cp : int) -> bool {
+    return cp == 0x200D
+}
+
+proc is_regional_indicator(cp : int) -> bool {
+    return cp >= 0x1F1E6 and cp <= 0x1F1FF
+}
+
+
+<<< ===================================================== >>
+<<< Cluster Forward >>
+<<< ===================================================== >>>
+
+proc next_grapheme_boundary(
+    text : string,
+    offset : int
+) -> int {
+
+    if offset >= text.length {
+        return text.length
+    }
+
+    let i =
+        next_codepoint_start(text, offset)
+
+    loop {
+
+        if i >= text.length {
+            break
+        }
+
+        let cp =
+            decode(text, i)
+
+        <<< Extend cluster rules >>>
+
+        if is_combining(cp) {
+            set i =
+                next_codepoint_start(text, i)
+            continue
+        }
+
+        if is_variation_selector(cp) {
+            set i =
+                next_codepoint_start(text, i)
+            continue
+        }
+
+        if is_zwj(cp) {
+
+            set i =
+                next_codepoint_start(text, i)
+
+            if i < text.length {
+                set i =
+                    next_codepoint_start(text, i)
+            }
+
+            continue
+        }
+
+        break
+    }
+
+    return i
+}
+
+
+<<< ===================================================== >>
+<<< Cluster Backward >>
+<<< ===================================================== >>>
+
+proc prev_grapheme_boundary(
+    text : string,
+    offset : int
+) -> int {
+
+    if offset <= 0 {
+        return 0
+    }
+
+    let i =
+        prev_codepoint_start(text, offset)
+
+    loop {
+
+        let cp =
+            decode(text, i)
+
+        if is_combining(cp) {
+            set i =
+                prev_codepoint_start(text, i)
+            continue
+        }
+
+        if is_variation_selector(cp) {
+            set i =
+                prev_codepoint_start(text, i)
+            continue
+        }
+
+        if is_zwj(cp) {
+            set i =
+                prev_codepoint_start(text, i)
+            continue
+        }
+
+        break
+    }
+
+    return i
+}
+
+
+<<< ===================================================== >>
+<<< Cursor Movement >>
+<<< ===================================================== >>>
+
+proc move_grapheme_right(
+    b : buffer.Buffer,
+    c : cursor.Cursor
+) -> cursor.Cursor {
+
+    let text =
+        buffer.as_string(b)
+
+    let next =
+        next_grapheme_boundary(
+            text,
+            c.pos.offset
+        )
+
+    return cursor.move_to(
+        b,
+        c,
+        next
+    )
+}
+
+proc move_grapheme_left(
+    b : buffer.Buffer,
+    c : cursor.Cursor
+) -> cursor.Cursor {
+
+    let text =
+        buffer.as_string(b)
+
+    let prev =
+        prev_grapheme_boundary(
+            text,
+            c.pos.offset
+        )
+
+    return cursor.move_to(
+        b,
+        c,
+        prev
+    )
+}

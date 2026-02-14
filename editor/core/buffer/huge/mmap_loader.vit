@@ -1,3 +1,321 @@
-space platon.editor.core.buffer.huge
+space platon.editor.core.buffer.huge.mmap_loader
 
-proc load_mmap(path : string) {}
+pull platon.editor.core.buffer.huge.chunk_manager as chunk
+
+<<< Huge File mmap Loader ULTRA MAX+++ >>>
+<<< Zero-copy simulation, page mapping model, dirty tracking, flush engine >>>
+
+form MmapRegion {
+    offset : int
+    length : int
+    mapped : bool
+    dirty : bool
+}
+
+form MmapLoader {
+    manager : chunk.ChunkManager
+    regions : [MmapRegion]
+    page_size : int
+    mapped_pages : int
+    flush_operations : int
+    map_operations : int
+    unmap_operations : int
+    version : int
+}
+
+const DEFAULT_PAGE_SIZE : int = 4096
+
+<<< Create mmap loader >>>
+
+proc new(
+    manager : chunk.ChunkManager,
+    page_size : int
+) -> MmapLoader {
+
+    let ps = page_size
+
+    if ps <= 0 {
+        set ps = DEFAULT_PAGE_SIZE
+    }
+
+    return MmapLoader {
+        manager: manager,
+        regions: [],
+        page_size: ps,
+        mapped_pages: 0,
+        flush_operations: 0,
+        map_operations: 0,
+        unmap_operations: 0,
+        version: 1
+    }
+}
+
+<<< Compute page index >>>
+
+proc page_index(ll : MmapLoader, offset : int) -> int {
+    return offset / ll.page_size
+}
+
+<<< Map region (simulate mmap) >>>
+
+proc map_region(
+    ll : MmapLoader,
+    offset : int,
+    length : int
+) -> MmapLoader {
+
+    let region = MmapRegion {
+        offset: offset,
+        length: length,
+        mapped: true,
+        dirty: false
+    }
+
+    set ll.regions = ll.regions + [region]
+
+    let pages = (length / ll.page_size) + 1
+
+    set ll.mapped_pages = ll.mapped_pages + pages
+    set ll.map_operations = ll.map_operations + 1
+    set ll.version = ll.version + 1
+
+    return ll
+}
+
+<<< Unmap region >>>
+
+proc unmap_region(
+    ll : MmapLoader,
+    index : int
+) -> MmapLoader {
+
+    if index < 0 or index >= ll.regions.length {
+        return ll
+    }
+
+    let r = ll.regions[index]
+
+    if r.mapped {
+
+        let pages = (r.length / ll.page_size) + 1
+
+        set ll.mapped_pages = ll.mapped_pages - pages
+        set ll.unmap_operations =
+            ll.unmap_operations + 1
+    }
+
+    <<< Remove region >>>
+    let new_regions : [MmapRegion] = []
+
+    let i = 0
+
+    loop {
+
+        if i >= ll.regions.length {
+            break
+        }
+
+        if i != index {
+            set new_regions = new_regions + [ll.regions[i]]
+        }
+
+        set i = i + 1
+    }
+
+    set ll.regions = new_regions
+    set ll.version = ll.version + 1
+
+    return ll
+}
+
+<<< Mark region dirty >>>
+
+proc mark_dirty(
+    ll : MmapLoader,
+    offset : int
+) -> MmapLoader {
+
+    let i = 0
+
+    loop {
+
+        if i >= ll.regions.length {
+            break
+        }
+
+        let r = ll.regions[i]
+
+        if offset >= r.offset and
+           offset <= r.offset + r.length {
+
+            set r.dirty = true
+            set ll.regions[i] = r
+        }
+
+        set i = i + 1
+    }
+
+    set ll.version = ll.version + 1
+
+    return ll
+}
+
+<<< Flush dirty regions >>>
+
+proc flush_dirty(ll : MmapLoader) -> MmapLoader {
+
+    let i = 0
+
+    loop {
+
+        if i >= ll.regions.length {
+            break
+        }
+
+        let r = ll.regions[i]
+
+        if r.dirty {
+
+            set r.dirty = false
+            set ll.regions[i] = r
+            set ll.flush_operations =
+                ll.flush_operations + 1
+        }
+
+        set i = i + 1
+    }
+
+    set ll.version = ll.version + 1
+
+    return ll
+}
+
+<<< Access file offset via mmap >>>
+
+proc access(
+    ll : MmapLoader,
+    offset : int,
+    length : int
+) -> MmapLoader {
+
+    set ll = map_region(ll, offset, length)
+
+    <<< Ensure chunk is loaded in manager too >>>
+    set ll.manager =
+        chunk.access_chunk(ll.manager, offset)
+
+    return ll
+}
+
+<<< Evict all clean regions >>>
+
+proc evict_clean(ll : MmapLoader) -> MmapLoader {
+
+    let i = 0
+
+    loop {
+
+        if i >= ll.regions.length {
+            break
+        }
+
+        let r = ll.regions[i]
+
+        if not r.dirty {
+            set ll = unmap_region(ll, i)
+        } else {
+            set i = i + 1
+        }
+    }
+
+    return ll
+}
+
+<<< Metrics accessors >>>
+
+proc mapped_page_count(ll : MmapLoader) -> int {
+    return ll.mapped_pages
+}
+
+proc map_count(ll : MmapLoader) -> int {
+    return ll.map_operations
+}
+
+proc unmap_count(ll : MmapLoader) -> int {
+    return ll.unmap_operations
+}
+
+proc flush_count(ll : MmapLoader) -> int {
+    return ll.flush_operations
+}
+
+<<< Stress sequential mapping >>>
+
+proc stress_sequential(
+    ll : MmapLoader,
+    iterations : int,
+    step : int
+) -> MmapLoader {
+
+    let i = 0
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        let offset = i * step
+
+        set ll = access(ll, offset, ll.page_size)
+
+        set i = i + 1
+    }
+
+    return ll
+}
+
+<<< Stress random mapping >>>
+
+proc stress_random(
+    ll : MmapLoader,
+    iterations : int
+) -> MmapLoader {
+
+    let i = 0
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        let offset =
+            (i * 104729) % ll.manager.total_size
+
+        set ll = access(ll, offset, ll.page_size)
+
+        if i % 3 == 0 {
+            set ll = mark_dirty(ll, offset)
+        }
+
+        set i = i + 1
+    }
+
+    return ll
+}
+
+<<< Full mmap loader suite >>>
+
+proc run_mmap_loader_ultra() {
+
+    let cm =
+        chunk.new(500000000, chunk.DEFAULT_CHUNK_SIZE)
+
+    let ll = new(cm, DEFAULT_PAGE_SIZE)
+
+    let ll2 = stress_sequential(ll, 2000, 8192)
+    let ll3 = stress_random(ll2, 3000)
+
+    flush_dirty(ll3)
+}

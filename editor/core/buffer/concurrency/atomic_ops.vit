@@ -1,1 +1,163 @@
-#  atomic operations
+space platon.editor.core.buffer.concurrency.atomic_ops
+
+<<< Buffer Concurrency Atomic Ops ULTRA MAX+++ >>>
+<<< Lock-free counters, CAS simulation, versioned writes, contention stress >>>
+
+form AtomicState {
+    value : int
+    version : int
+    cas_failures : int
+}
+
+let atomic = AtomicState {
+    value: 0,
+    version: 1,
+    cas_failures: 0
+}
+
+<<< Atomic load >>>
+
+proc atomic_load() -> int {
+    return atomic.value
+}
+
+<<< Atomic store >>>
+
+proc atomic_store(new_value : int) {
+
+    set atomic.value = new_value
+    set atomic.version = atomic.version + 1
+}
+
+<<< Compare and swap simulation >>>
+
+proc compare_and_swap(expected : int, new_value : int) -> bool {
+
+    if atomic.value == expected {
+
+        set atomic.value = new_value
+        set atomic.version = atomic.version + 1
+
+        return true
+    }
+
+    set atomic.cas_failures = atomic.cas_failures + 1
+    return false
+}
+
+<<< Atomic increment using CAS loop >>>
+
+proc atomic_increment() {
+
+    loop {
+
+        let current = atomic_load()
+        let success = compare_and_swap(current, current + 1)
+
+        if success {
+            break
+        }
+    }
+}
+
+<<< Atomic decrement using CAS loop >>>
+
+proc atomic_decrement() {
+
+    loop {
+
+        let current = atomic_load()
+        let success = compare_and_swap(current, current - 1)
+
+        if success {
+            break
+        }
+    }
+}
+
+<<< Version accessor >>>
+
+proc atomic_version() -> int {
+    return atomic.version
+}
+
+<<< CAS failure counter accessor >>>
+
+proc cas_fail_count() -> int {
+    return atomic.cas_failures
+}
+
+<<< Stress increment under contention simulation >>>
+
+proc stress_atomic_increment(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        atomic_increment()
+
+        set i = i + 1
+    }
+}
+
+<<< Stress decrement under contention simulation >>>
+
+proc stress_atomic_decrement(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        atomic_decrement()
+
+        set i = i + 1
+    }
+}
+
+<<< Mixed contention simulation >>>
+
+proc stress_mixed_contention(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        if i % 2 == 0 {
+            atomic_increment()
+        } else {
+            atomic_decrement()
+        }
+
+        set i = i + 1
+    }
+}
+
+<<< Reset atomic state >>>
+
+proc reset_atomic_state() {
+
+    set atomic.value = 0
+    set atomic.version = 1
+    set atomic.cas_failures = 0
+}
+
+<<< Full atomic ops suite >>>
+
+proc run_atomic_ops_ultra() {
+
+    reset_atomic_state()
+
+    stress_atomic_increment(100000)
+    stress_atomic_decrement(50000)
+    stress_mixed_contention(100000)
+}

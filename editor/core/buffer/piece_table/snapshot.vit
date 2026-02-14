@@ -1,1 +1,264 @@
-#  persistent snapshot system
+space platon.editor.core.buffer.piece_table.snapshot
+
+pull platon.editor.core.buffer.piece_table.piece as piece
+
+<<< Piece Table Snapshot ULTRA MAX+++ >>>
+<<< Immutable snapshot system with version chain and fast restore model >>>
+
+
+form Snapshot {
+    id : int
+    pieces : [piece.Piece]
+    total_length : int
+    parent_id : int
+    version : int
+}
+
+form SnapshotStats {
+    created : int
+    restored : int
+    dropped : int
+    version : int
+}
+
+form SnapshotEngine {
+    snapshots : [Snapshot]
+    next_id : int
+    stats : SnapshotStats
+}
+
+<<< Create new snapshot engine >>>
+
+proc new() -> SnapshotEngine {
+
+    return SnapshotEngine {
+        snapshots: [],
+        next_id: 1,
+        stats: SnapshotStats {
+            created: 0,
+            restored: 0,
+            dropped: 0,
+            version: 1
+        }
+    }
+}
+
+<<< Compute total length of piece list >>>
+
+proc compute_total_length(
+    pieces : [piece.Piece]
+) -> int {
+
+    let total = 0
+    let i = 0
+
+    loop {
+
+        if i >= pieces.length {
+            break
+        }
+
+        set total =
+            total + pieces[i].length
+
+        set i = i + 1
+    }
+
+    return total
+}
+
+<<< Create snapshot from current piece list >>>
+
+proc create_snapshot(
+    se : SnapshotEngine,
+    pieces : [piece.Piece],
+    parent_id : int
+) -> SnapshotEngine {
+
+    let total =
+        compute_total_length(pieces)
+
+    let snap = Snapshot {
+        id: se.next_id,
+        pieces: pieces,
+        total_length: total,
+        parent_id: parent_id,
+        version: se.stats.version + 1
+    }
+
+    set se.snapshots =
+        se.snapshots + [snap]
+
+    set se.next_id =
+        se.next_id + 1
+
+    set se.stats.created =
+        se.stats.created + 1
+
+    set se.stats.version =
+        se.stats.version + 1
+
+    return se
+}
+
+<<< Find snapshot by id >>>
+
+proc find_snapshot(
+    se : SnapshotEngine,
+    id : int
+) -> Snapshot {
+
+    let i = 0
+
+    loop {
+
+        if i >= se.snapshots.length {
+            break
+        }
+
+        if se.snapshots[i].id == id {
+            return se.snapshots[i]
+        }
+
+        set i = i + 1
+    }
+
+    return Snapshot {
+        id: -1,
+        pieces: [],
+        total_length: 0,
+        parent_id: -1,
+        version: 0
+    }
+}
+
+<<< Restore snapshot (logical restore only) >>>
+
+proc restore_snapshot(
+    se : SnapshotEngine,
+    id : int
+) -> [piece.Piece] {
+
+    let snap =
+        find_snapshot(se, id)
+
+    if snap.id == -1 {
+        return []
+    }
+
+    set se.stats.restored =
+        se.stats.restored + 1
+
+    set se.stats.version =
+        se.stats.version + 1
+
+    return snap.pieces
+}
+
+<<< Drop snapshot by id >>>
+
+proc drop_snapshot(
+    se : SnapshotEngine,
+    id : int
+) -> SnapshotEngine {
+
+    let new_list : [Snapshot] = []
+
+    let i = 0
+
+    loop {
+
+        if i >= se.snapshots.length {
+            break
+        }
+
+        if se.snapshots[i].id != id {
+            set new_list =
+                new_list + [se.snapshots[i]]
+        }
+
+        set i = i + 1
+    }
+
+    set se.snapshots = new_list
+
+    set se.stats.dropped =
+        se.stats.dropped + 1
+
+    set se.stats.version =
+        se.stats.version + 1
+
+    return se
+}
+
+<<< Accessors >>>
+
+proc total_snapshots(se : SnapshotEngine) -> int {
+    return se.snapshots.length
+}
+
+proc total_created(se : SnapshotEngine) -> int {
+    return se.stats.created
+}
+
+proc total_restored(se : SnapshotEngine) -> int {
+    return se.stats.restored
+}
+
+proc total_dropped(se : SnapshotEngine) -> int {
+    return se.stats.dropped
+}
+
+<<< Stress snapshot workload >>>
+
+proc stress_snapshot(
+    se : SnapshotEngine,
+    iterations : int
+) -> SnapshotEngine {
+
+    let i = 0
+
+    let pieces : [piece.Piece] = []
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        <<< Simulate piece growth >>>
+        let p = piece.Piece {
+            source: piece.BufferKind.Add,
+            start: i * 10,
+            length: 10,
+            version: i + 1
+        }
+
+        set pieces = pieces + [p]
+
+        set se =
+            create_snapshot(se, pieces, i)
+
+        if i % 3 == 0 {
+            restore_snapshot(se, i + 1)
+        }
+
+        if i % 5 == 0 {
+            set se =
+                drop_snapshot(se, i)
+        }
+
+        set i = i + 1
+    }
+
+    return se
+}
+
+<<< Full snapshot suite >>>
+
+proc run_snapshot_ultra() {
+
+    let se = new()
+
+    stress_snapshot(se, 2000)
+}

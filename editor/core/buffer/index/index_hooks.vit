@@ -1,1 +1,212 @@
-#  background index trigger
+space platon.editor.core.buffer.index.index_hooks
+
+<<< Buffer Index Hooks ULTRA MAX+++ >>>
+<<< Incremental index updates, line index sync, token index hooks, diff-aware >>>
+
+form IndexStats {
+    updates : int
+    line_shifts : int
+    token_invalidations : int
+    full_rebuilds : int
+    version : int
+}
+
+form IndexState {
+    line_count : int
+    token_count : int
+    stats : IndexStats
+}
+
+let index = IndexState {
+    line_count: 0,
+    token_count: 0,
+    stats: IndexStats {
+        updates: 0,
+        line_shifts: 0,
+        token_invalidations: 0,
+        full_rebuilds: 0,
+        version: 1
+    }
+}
+
+<<< Hook: on insert >>>
+
+proc on_insert(
+    offset : int,
+    length : int,
+    new_lines : int
+) {
+
+    set index.line_count =
+        index.line_count + new_lines
+
+    set index.token_count =
+        index.token_count + (length / 4)
+
+    set index.stats.updates =
+        index.stats.updates + 1
+
+    set index.stats.line_shifts =
+        index.stats.line_shifts + new_lines
+
+    set index.stats.version =
+        index.stats.version + 1
+}
+
+<<< Hook: on delete >>>
+
+proc on_delete(
+    offset : int,
+    length : int,
+    removed_lines : int
+) {
+
+    if removed_lines > index.line_count {
+        set removed_lines = index.line_count
+    }
+
+    set index.line_count =
+        index.line_count - removed_lines
+
+    if length / 4 > index.token_count {
+        set index.token_count = 0
+    } else {
+        set index.token_count =
+            index.token_count - (length / 4)
+    }
+
+    set index.stats.updates =
+        index.stats.updates + 1
+
+    set index.stats.line_shifts =
+        index.stats.line_shifts + removed_lines
+
+    set index.stats.version =
+        index.stats.version + 1
+}
+
+<<< Hook: invalidate token range >>>
+
+proc invalidate_tokens(
+    start_line : int,
+    end_line : int
+) {
+
+    let affected = end_line - start_line
+
+    if affected < 0 {
+        set affected = 0
+    }
+
+    set index.stats.token_invalidations =
+        index.stats.token_invalidations + affected
+
+    set index.stats.version =
+        index.stats.version + 1
+}
+
+<<< Hook: full rebuild request >>>
+
+proc full_rebuild() {
+
+    set index.stats.full_rebuilds =
+        index.stats.full_rebuilds + 1
+
+    set index.stats.version =
+        index.stats.version + 1
+}
+
+<<< Accessors >>>
+
+proc total_lines() -> int {
+    return index.line_count
+}
+
+proc total_tokens() -> int {
+    return index.token_count
+}
+
+proc total_updates() -> int {
+    return index.stats.updates
+}
+
+proc total_line_shifts() -> int {
+    return index.stats.line_shifts
+}
+
+proc total_invalidations() -> int {
+    return index.stats.token_invalidations
+}
+
+proc total_full_rebuilds() -> int {
+    return index.stats.full_rebuilds
+}
+
+<<< Reset index state >>>
+
+proc reset_index() {
+
+    set index.line_count = 0
+    set index.token_count = 0
+
+    set index.stats.updates = 0
+    set index.stats.line_shifts = 0
+    set index.stats.token_invalidations = 0
+    set index.stats.full_rebuilds = 0
+    set index.stats.version = 1
+}
+
+<<< Stress incremental edits >>>
+
+proc stress_incremental(iterations : int) {
+
+    let i = 0
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        if i % 2 == 0 {
+
+            on_insert(i * 10, 80, 1)
+
+        } else {
+
+            on_delete(i * 5, 40, 1)
+        }
+
+        invalidate_tokens(i, i + 2)
+
+        set i = i + 1
+    }
+}
+
+<<< Stress rebuild scenario >>>
+
+proc stress_rebuild(iterations : int) {
+
+    let i = 0
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        full_rebuild()
+
+        set i = i + 1
+    }
+}
+
+<<< Full index hook suite >>>
+
+proc run_index_hooks_ultra() {
+
+    reset_index()
+
+    stress_incremental(10000)
+    stress_rebuild(50)
+}

@@ -1,1 +1,316 @@
-#  rope rebalance logic
+space platon.editor.core.buffer.rope.rope_balance
+
+<<< Rope Balance ULTRA MAX+++ >>>
+<<< AVL-style balancing helpers + full rebuild strategy for heavy fragmentation >>>
+
+
+form RopeNode {
+    left : *RopeNode
+    right : *RopeNode
+    weight : int
+    height : int
+    text : string
+}
+
+form RopeStats {
+    rotations_left : int
+    rotations_right : int
+    rebuilds : int
+    height_recomputes : int
+    version : int
+}
+
+form RopeBalanceEngine {
+    stats : RopeStats
+}
+
+<<< Create balance engine >>>
+
+proc new() -> RopeBalanceEngine {
+
+    return RopeBalanceEngine {
+        stats: RopeStats {
+            rotations_left: 0,
+            rotations_right: 0,
+            rebuilds: 0,
+            height_recomputes: 0,
+            version: 1
+        }
+    }
+}
+
+<<< Height helper >>>
+
+proc height(n : *RopeNode) -> int {
+
+    if n == null {
+        return 0
+    }
+
+    return n.height
+}
+
+<<< Update height and weight >>>
+
+proc update_node(
+    rbe : RopeBalanceEngine,
+    n : *RopeNode
+) -> *RopeNode {
+
+    if n == null {
+        return n
+    }
+
+    let lh = height(n.left)
+    let rh = height(n.right)
+
+    if lh > rh {
+        set n.height = lh + 1
+    } else {
+        set n.height = rh + 1
+    }
+
+    if n.left != null {
+        set n.weight = n.left.weight
+    } else {
+        set n.weight = n.text.length
+    }
+
+    set rbe.stats.height_recomputes =
+        rbe.stats.height_recomputes + 1
+
+    set rbe.stats.version =
+        rbe.stats.version + 1
+
+    return n
+}
+
+<<< Balance factor >>>
+
+proc balance_factor(n : *RopeNode) -> int {
+
+    if n == null {
+        return 0
+    }
+
+    return height(n.left) - height(n.right)
+}
+
+<<< Rotate right >>>
+
+proc rotate_right(
+    rbe : RopeBalanceEngine,
+    y : *RopeNode
+) -> *RopeNode {
+
+    let x = y.left
+    let t2 = x.right
+
+    set x.right = y
+    set y.left = t2
+
+    set y = update_node(rbe, y)
+    set x = update_node(rbe, x)
+
+    set rbe.stats.rotations_right =
+        rbe.stats.rotations_right + 1
+
+    set rbe.stats.version =
+        rbe.stats.version + 1
+
+    return x
+}
+
+<<< Rotate left >>>
+
+proc rotate_left(
+    rbe : RopeBalanceEngine,
+    x : *RopeNode
+) -> *RopeNode {
+
+    let y = x.right
+    let t2 = y.left
+
+    set y.left = x
+    set x.right = t2
+
+    set x = update_node(rbe, x)
+    set y = update_node(rbe, y)
+
+    set rbe.stats.rotations_left =
+        rbe.stats.rotations_left + 1
+
+    set rbe.stats.version =
+        rbe.stats.version + 1
+
+    return y
+}
+
+<<< Rebalance node >>>
+
+proc rebalance(
+    rbe : RopeBalanceEngine,
+    node : *RopeNode
+) -> *RopeNode {
+
+    if node == null {
+        return node
+    }
+
+    set node = update_node(rbe, node)
+
+    let bf = balance_factor(node)
+
+    <<< Left heavy >>>
+    if bf > 1 {
+
+        if balance_factor(node.left) < 0 {
+            set node.left =
+                rotate_left(rbe, node.left)
+        }
+
+        return rotate_right(rbe, node)
+    }
+
+    <<< Right heavy >>>
+    if bf < -1 {
+
+        if balance_factor(node.right) > 0 {
+            set node.right =
+                rotate_right(rbe, node.right)
+        }
+
+        return rotate_left(rbe, node)
+    }
+
+    return node
+}
+
+<<< Flatten rope to leaf list >>>
+
+proc flatten(
+    node : *RopeNode
+) -> [string] {
+
+    if node == null {
+        return []
+    }
+
+    if node.left == null and
+       node.right == null {
+
+        return [node.text]
+    }
+
+    let left_list = flatten(node.left)
+    let right_list = flatten(node.right)
+
+    return left_list + right_list
+}
+
+<<< Rebuild balanced rope from chunks >>>
+
+proc build_balanced(
+    rbe : RopeBalanceEngine,
+    chunks : [string],
+    start : int,
+    end : int
+) -> *RopeNode {
+
+    if start > end {
+        return null
+    }
+
+    let mid = (start + end) / 2
+
+    let node = RopeNode {
+        left: null,
+        right: null,
+        weight: 0,
+        height: 1,
+        text: chunks[mid]
+    }
+
+    set node.left =
+        build_balanced(rbe, chunks, start, mid - 1)
+
+    set node.right =
+        build_balanced(rbe, chunks, mid + 1, end)
+
+    set node = update_node(rbe, node)
+
+    return node
+}
+
+<<< Full rebuild strategy >>>
+
+proc rebuild(
+    rbe : RopeBalanceEngine,
+    root : *RopeNode
+) -> *RopeNode {
+
+    let chunks = flatten(root)
+
+    let new_root =
+        build_balanced(
+            rbe,
+            chunks,
+            0,
+            chunks.length - 1
+        )
+
+    set rbe.stats.rebuilds =
+        rbe.stats.rebuilds + 1
+
+    set rbe.stats.version =
+        rbe.stats.version + 1
+
+    return new_root
+}
+
+<<< Stress rebalance workload >>>
+
+proc stress_balance(
+    rbe : RopeBalanceEngine,
+    root : *RopeNode,
+    iterations : int
+) -> *RopeNode {
+
+    let i = 0
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        set root =
+            rebalance(rbe, root)
+
+        if i % 10 == 0 {
+            set root =
+                rebuild(rbe, root)
+        }
+
+        set i = i + 1
+    }
+
+    return root
+}
+
+<<< Full rope balance suite >>>
+
+proc run_rope_balance_ultra() {
+
+    let rbe = new()
+
+    let root = RopeNode {
+        left: null,
+        right: null,
+        weight: 0,
+        height: 1,
+        text: "root"
+    }
+
+    stress_balance(rbe, root, 2000)
+}

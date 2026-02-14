@@ -1,7 +1,291 @@
-space platon.editor.core.buffer.rope
+space platon.editor.core.buffer.rope.rope_node
+
+<<< Rope Node Core ULTRA MAX+++ >>>
+<<< Weight-accurate subtree model, safe helpers, invariants validation >>>
+
 
 form RopeNode {
-    left : int
-    right : int
-    weight : int
+    left : *RopeNode
+    right : *RopeNode
+    weight : int        <<< total chars in left subtree >>>
+    height : int
+    text : string       <<< leaf text, empty for internal nodes >>>
+    version : int
 }
+
+form RopeNodeStats {
+    created : int
+    updated : int
+    validations : int
+    version : int
+}
+
+form RopeNodeEngine {
+    stats : RopeNodeStats
+}
+
+<<< Create engine >>>
+
+proc new() -> RopeNodeEngine {
+
+    return RopeNodeEngine {
+        stats: RopeNodeStats {
+            created: 0,
+            updated: 0,
+            validations: 0,
+            version: 1
+        }
+    }
+}
+
+<<< Create leaf node >>>
+
+proc leaf(
+    rne : RopeNodeEngine,
+    text : string
+) -> *RopeNode {
+
+    set rne.stats.created =
+        rne.stats.created + 1
+
+    set rne.stats.version =
+        rne.stats.version + 1
+
+    return RopeNode {
+        left: null,
+        right: null,
+        weight: 0,
+        height: 1,
+        text: text,
+        version: rne.stats.version
+    }
+}
+
+<<< Create internal node >>>
+
+proc internal(
+    rne : RopeNodeEngine,
+    left : *RopeNode,
+    right : *RopeNode
+) -> *RopeNode {
+
+    let node = RopeNode {
+        left: left,
+        right: right,
+        weight: 0,
+        height: 1,
+        text: "",
+        version: rne.stats.version + 1
+    }
+
+    set node = recompute(rne, node)
+
+    set rne.stats.created =
+        rne.stats.created + 1
+
+    return node
+}
+
+<<< Height helper >>>
+
+proc height(n : *RopeNode) -> int {
+
+    if n == null {
+        return 0
+    }
+
+    return n.height
+}
+
+<<< Subtree total length >>>
+
+proc total_length(
+    n : *RopeNode
+) -> int {
+
+    if n == null {
+        return 0
+    }
+
+    if n.left == null and
+       n.right == null {
+
+        return n.text.length
+    }
+
+    return n.weight +
+           total_length(n.right)
+}
+
+<<< Recompute metadata (weight + height) >>>
+
+proc recompute(
+    rne : RopeNodeEngine,
+    n : *RopeNode
+) -> *RopeNode {
+
+    if n == null {
+        return n
+    }
+
+    let lh = height(n.left)
+    let rh = height(n.right)
+
+    if lh > rh {
+        set n.height = lh + 1
+    } else {
+        set n.height = rh + 1
+    }
+
+    if n.left != null {
+        set n.weight =
+            total_length(n.left)
+    } else {
+        set n.weight = 0
+    }
+
+    set n.version = n.version + 1
+
+    set rne.stats.updated =
+        rne.stats.updated + 1
+
+    set rne.stats.version =
+        rne.stats.version + 1
+
+    return n
+}
+
+<<< Is leaf node >>>
+
+proc is_leaf(n : *RopeNode) -> bool {
+
+    if n == null {
+        return false
+    }
+
+    return n.left == null and
+           n.right == null
+}
+
+<<< Validate invariants >>>
+
+proc validate(
+    rne : RopeNodeEngine,
+    n : *RopeNode
+) -> bool {
+
+    if n == null {
+        return true
+    }
+
+    if is_leaf(n) {
+
+        if n.weight != 0 {
+            return false
+        }
+
+        return true
+    }
+
+    let expected_weight =
+        total_length(n.left)
+
+    if n.weight != expected_weight {
+        return false
+    }
+
+    let valid_left =
+        validate(rne, n.left)
+
+    let valid_right =
+        validate(rne, n.right)
+
+    set rne.stats.validations =
+        rne.stats.validations + 1
+
+    set rne.stats.version =
+        rne.stats.version + 1
+
+    return valid_left and valid_right
+}
+
+<<< Find character at global offset >>>
+
+proc char_at(
+    n : *RopeNode,
+    offset : int
+) -> string {
+
+    if n == null {
+        return ""
+    }
+
+    if is_leaf(n) {
+
+        if offset < 0 or
+           offset >= n.text.length {
+            return ""
+        }
+
+        return n.text.substring(offset, offset + 1)
+    }
+
+    if offset < n.weight {
+
+        return char_at(n.left, offset)
+
+    } else {
+
+        return char_at(
+            n.right,
+            offset - n.weight
+        )
+    }
+}
+
+<<< Stress node operations >>>
+
+proc stress_node(
+    rne : RopeNodeEngine,
+    iterations : int
+) -> *RopeNode {
+
+    let i = 0
+
+    let root =
+        leaf(rne, "root")
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        let left =
+            leaf(rne, "L")
+
+        let right =
+            leaf(rne, "R")
+
+        set root =
+            internal(rne, left, right)
+
+        set root =
+            recompute(rne, root)
+
+        validate(rne, root)
+
+        set i = i + 1
+    }
+
+    return root
+}
+
+<<< Full rope node suite >>>
+
+proc run_rope_node_ultra() {
+
+    let rne = new()
+
+    stress_node(rne, 2000)
+}  

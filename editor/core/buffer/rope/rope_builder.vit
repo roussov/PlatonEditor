@@ -1,1 +1,252 @@
-#  rope builder logic
+space platon.editor.core.buffer.rope.rope_builder
+
+pull platon.editor.core.buffer.rope.rope_balance as balance
+
+<<< Rope Builder ULTRA MAX+++ >>>
+<<< Chunked construction, streaming append, balanced build strategy >>>
+
+
+form RopeNode {
+    left : *RopeNode
+    right : *RopeNode
+    weight : int
+    height : int
+    text : string
+}
+
+form BuilderStats {
+    chunks_created : int
+    nodes_created : int
+    builds : int
+    stream_appends : int
+    version : int
+}
+
+form RopeBuilder {
+    chunk_size : int
+    chunks : [string]
+    stats : BuilderStats
+}
+
+const DEFAULT_CHUNK_SIZE : int = 1024
+
+<<< Create builder >>>
+
+proc new(chunk_size : int) -> RopeBuilder {
+
+    let cs = chunk_size
+
+    if cs <= 0 {
+        set cs = DEFAULT_CHUNK_SIZE
+    }
+
+    return RopeBuilder {
+        chunk_size: cs,
+        chunks: [],
+        stats: BuilderStats {
+            chunks_created: 0,
+            nodes_created: 0,
+            builds: 0,
+            stream_appends: 0,
+            version: 1
+        }
+    }
+}
+
+<<< Append raw text (auto-chunking) >>>
+
+proc append(
+    rb : RopeBuilder,
+    text : string
+) -> RopeBuilder {
+
+    let offset = 0
+
+    loop {
+
+        if offset >= text.length {
+            break
+        }
+
+        let end = offset + rb.chunk_size
+
+        if end > text.length {
+            set end = text.length
+        }
+
+        let chunk =
+            text.substring(offset, end)
+
+        set rb.chunks =
+            rb.chunks + [chunk]
+
+        set rb.stats.chunks_created =
+            rb.stats.chunks_created + 1
+
+        set offset = end
+    }
+
+    set rb.stats.stream_appends =
+        rb.stats.stream_appends + 1
+
+    set rb.stats.version =
+        rb.stats.version + 1
+
+    return rb
+}
+
+<<< Build balanced rope from chunks >>>
+
+proc build_balanced(
+    rb : RopeBuilder,
+    start : int,
+    end : int
+) -> *RopeNode {
+
+    if start > end {
+        return null
+    }
+
+    let mid = (start + end) / 2
+
+    let node = RopeNode {
+        left: null,
+        right: null,
+        weight: rb.chunks[mid].length,
+        height: 1,
+        text: rb.chunks[mid]
+    }
+
+    set rb.stats.nodes_created =
+        rb.stats.nodes_created + 1
+
+    set node.left =
+        build_balanced(rb, start, mid - 1)
+
+    set node.right =
+        build_balanced(rb, mid + 1, end)
+
+    let lh = 0
+    let rh = 0
+
+    if node.left != null {
+        set lh = node.left.height
+        set node.weight =
+            node.left.weight + node.text.length
+    }
+
+    if node.right != null {
+        set rh = node.right.height
+    }
+
+    if lh > rh {
+        set node.height = lh + 1
+    } else {
+        set node.height = rh + 1
+    }
+
+    return node
+}
+
+<<< Finalize rope construction >>>
+
+proc build(
+    rb : RopeBuilder
+) -> *RopeNode {
+
+    if rb.chunks.length == 0 {
+        return null
+    }
+
+    let root =
+        build_balanced(
+            rb,
+            0,
+            rb.chunks.length - 1
+        )
+
+    set rb.stats.builds =
+        rb.stats.builds + 1
+
+    set rb.stats.version =
+        rb.stats.version + 1
+
+    return root
+}
+
+<<< Clear builder (reuse) >>>
+
+proc reset(
+    rb : RopeBuilder
+) -> RopeBuilder {
+
+    set rb.chunks = []
+
+    set rb.stats.version =
+        rb.stats.version + 1
+
+    return rb
+}
+
+<<< Build rope directly from large input (fast path) >>>
+
+proc build_from_text(
+    rb : RopeBuilder,
+    text : string
+) -> *RopeNode {
+
+    set rb = append(rb, text)
+
+    return build(rb)
+}
+
+<<< Streaming incremental builder (huge file mode) >>>
+
+proc stream_append(
+    rb : RopeBuilder,
+    fragment : string
+) -> RopeBuilder {
+
+    set rb = append(rb, fragment)
+
+    return rb
+}
+
+<<< Stress builder workload >>>
+
+proc stress_builder(
+    rb : RopeBuilder,
+    iterations : int
+) -> *RopeNode {
+
+    let i = 0
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        let fragment = "segment"
+
+        set rb =
+            stream_append(rb, fragment)
+
+        set i = i + 1
+    }
+
+    return build(rb)
+}
+
+<<< Full rope builder suite >>>
+
+proc run_rope_builder_ultra() {
+
+    let rb = new(DEFAULT_CHUNK_SIZE)
+
+    let text = "Ultra Massive Rope Builder Engine"
+
+    build_from_text(rb, text)
+
+    stress_builder(rb, 2000)
+}

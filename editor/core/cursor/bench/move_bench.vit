@@ -1,1 +1,263 @@
-#  cursor movement benchmark
+space platon.editor.core.cursor.bench.move_bench
+
+pull platon.editor.core.buffer.buffer as buffer
+pull platon.editor.core.buffer.cursor as cursor
+
+<<< Cursor Move Benchmark ULTRA MAX >>>
+<<< Single cursor + multi cursor + randomized stress movement >>>
+
+
+<<< ===================================================== >>
+<<< Simple Timer Stub (replace with real runtime timer) >>
+<<< ===================================================== >>>
+
+proc now() -> int {
+    return 0
+}
+
+proc elapsed(start : int, end : int) -> int {
+    return end - start
+}
+
+
+<<< ===================================================== >>
+<<< Deterministic RNG >>
+<<< ===================================================== >>>
+
+form Rng {
+    seed : int
+}
+
+proc rng_new(seed : int) -> Rng {
+    return Rng { seed: seed }
+}
+
+proc rng_next(r : Rng) -> Rng {
+    set r.seed = (r.seed * 1664525 + 1013904223) % 2147483647
+    return r
+}
+
+proc rng_val(r : Rng, max : int) -> [Rng] {
+
+    if max <= 0 {
+        return [r, 0]
+    }
+
+    set r = rng_next(r)
+
+    return [r, r.seed % max]
+}
+
+
+<<< ===================================================== >>
+<<< Single Cursor Sequential Movement >>
+<<< ===================================================== >>>
+
+proc bench_single_sequential() {
+
+    let b =
+        buffer.new("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+    let set =
+        cursor.new_set()
+
+    let c =
+        cursor.primary(set)
+
+    let start_time = now()
+
+    let i = 0
+
+    loop {
+
+        if i >= 200000 {
+            break
+        }
+
+        set c =
+            cursor.move_right(b, c)
+
+        set c =
+            cursor.move_left(b, c)
+
+        set i = i + 1
+    }
+
+    let end_time = now()
+
+    let duration =
+        elapsed(start_time, end_time)
+
+    <<< Result duration captured (single sequential) >>>
+}
+
+<<< ===================================================== >>
+<<< Multi Cursor Movement >>
+<<< ===================================================== >>>
+
+proc bench_multi_cursor() {
+
+    let b =
+        buffer.new("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+    let set =
+        cursor.new_set()
+
+    let i = 0
+
+    loop {
+
+        if i >= 20 {
+            break
+        }
+
+        set set =
+            cursor.add_cursor(set, i)
+
+        set i = i + 1
+    }
+
+    let start_time = now()
+
+    let j = 0
+
+    loop {
+
+        if j >= 100000 {
+            break
+        }
+
+        let k = 0
+
+        loop {
+
+            if k >= set.cursors.length {
+                break
+            }
+
+            let c = set.cursors[k]
+
+            set c =
+                cursor.move_right(b, c)
+
+            set set.cursors[k] = c
+
+            set k = k + 1
+        }
+
+        set j = j + 1
+    }
+
+    let end_time = now()
+
+    let duration =
+        elapsed(start_time, end_time)
+
+    <<< Result duration captured (multi cursor) >>>
+}
+
+<<< ===================================================== >>
+<<< Randomized Movement Stress >>
+<<< ===================================================== >>>
+
+proc bench_randomized() {
+
+    let b =
+        buffer.new("LoremIpsumDolorSitAmetConsectetur")
+
+    let set =
+        cursor.new_set()
+
+    let c =
+        cursor.primary(set)
+
+    let r =
+        rng_new(2026)
+
+    let start_time = now()
+
+    let i = 0
+
+    loop {
+
+        if i >= 300000 {
+            break
+        }
+
+        let rv =
+            rng_val(r, 2)
+
+        set r = rv[0]
+        let op = rv[1]
+
+        if op == 0 {
+
+            set c =
+                cursor.move_left(b, c)
+
+        } else {
+
+            set c =
+                cursor.move_right(b, c)
+        }
+
+        set i = i + 1
+    }
+
+    let end_time = now()
+
+    let duration =
+        elapsed(start_time, end_time)
+
+    <<< Result duration captured (randomized) >>>
+}
+
+<<< ===================================================== >>
+<<< Extreme Stress Test >>
+<<< ===================================================== >>>
+
+proc bench_extreme_stress() {
+
+    let b =
+        buffer.new("A")
+
+    let set =
+        cursor.new_set()
+
+    let c =
+        cursor.primary(set)
+
+    let start_time = now()
+
+    let i = 0
+
+    loop {
+
+        if i >= 1000000 {
+            break
+        }
+
+        set c =
+            cursor.move_right(b, c)
+
+        set c =
+            cursor.move_left(b, c)
+
+        set i = i + 1
+    }
+
+    let end_time = now()
+
+    let duration =
+        elapsed(start_time, end_time)
+
+    <<< Result duration captured (extreme stress) >>>
+}
+
+proc run_all_benchmarks() {
+
+    bench_single_sequential()
+    bench_multi_cursor()
+    bench_randomized()
+    bench_extreme_stress()
+}

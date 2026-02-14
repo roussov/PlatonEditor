@@ -1,1 +1,223 @@
-#  word boundary detection
+space platon.editor.core.cursor.navigation.word_navigation
+
+pull platon.editor.core.buffer.buffer as buffer
+pull platon.editor.core.buffer.cursor as cursor
+
+<<< Word Navigation ULTRA MAX CORE >>>
+<<< Word-based cursor movement with programming language awareness >>>
+
+
+<<< ===================================================== >>
+<<< Character Classification >>
+<<< ===================================================== >>>
+
+proc is_letter(b : int) -> bool {
+    return (b >= 65 and b <= 90) or
+           (b >= 97 and b <= 122)
+}
+
+proc is_digit(b : int) -> bool {
+    return b >= 48 and b <= 57
+}
+
+proc is_underscore(b : int) -> bool {
+    return b == 95
+}
+
+proc is_whitespace(b : int) -> bool {
+    return b == 32 or b == 9 or b == 10 or b == 13
+}
+
+proc is_word_char(b : int) -> bool {
+    return is_letter(b) or
+           is_digit(b) or
+           is_underscore(b)
+}
+
+proc is_upper(b : int) -> bool {
+    return b >= 65 and b <= 90
+}
+
+proc is_lower(b : int) -> bool {
+    return b >= 97 and b <= 122
+}
+
+
+<<< ===================================================== >>
+<<< Word Boundary Forward >>
+<<< ===================================================== >>>
+
+proc next_word_boundary(
+    text : string,
+    offset : int
+) -> int {
+
+    let len = text.length
+    let i = offset
+
+    if i >= len {
+        return len
+    }
+
+    <<< Skip whitespace first >>>
+    loop {
+        if i >= len { break }
+        if not is_whitespace(text[i]) { break }
+        set i = i + 1
+    }
+
+    if i >= len {
+        return len
+    }
+
+    <<< If not word char, skip symbol block >>>
+    if not is_word_char(text[i]) {
+
+        loop {
+            if i >= len { break }
+            if is_whitespace(text[i]) { break }
+            if is_word_char(text[i]) { break }
+            set i = i + 1
+        }
+
+        return i
+    }
+
+    <<< Walk through word with camelCase detection >>>
+    loop {
+
+        if i + 1 >= len {
+            break
+        }
+
+        let cur = text[i]
+        let next = text[i + 1]
+
+        if not is_word_char(next) {
+            set i = i + 1
+            break
+        }
+
+        <<< camelCase boundary: lower -> upper >>>
+        if is_lower(cur) and is_upper(next) {
+            set i = i + 1
+            break
+        }
+
+        set i = i + 1
+    }
+
+    return i
+}
+
+
+<<< ===================================================== >>
+<<< Word Boundary Backward >>
+<<< ===================================================== >>>
+
+proc prev_word_boundary(
+    text : string,
+    offset : int
+) -> int {
+
+    let i = offset - 1
+
+    if i < 0 {
+        return 0
+    }
+
+    <<< Skip whitespace backwards >>>
+    loop {
+        if i < 0 { break }
+        if not is_whitespace(text[i]) { break }
+        set i = i - 1
+    }
+
+    if i < 0 {
+        return 0
+    }
+
+    <<< If not word char, skip symbol block >>>
+    if not is_word_char(text[i]) {
+
+        loop {
+            if i < 0 { break }
+            if is_whitespace(text[i]) { break }
+            if is_word_char(text[i]) { break }
+            set i = i - 1
+        }
+
+        return i + 1
+    }
+
+    <<< Walk backward inside word >>>
+    loop {
+
+        if i - 1 < 0 {
+            break
+        }
+
+        let cur = text[i]
+        let prev = text[i - 1]
+
+        if not is_word_char(prev) {
+            break
+        }
+
+        <<< camelCase boundary: upper preceded by lower >>>
+        if is_upper(cur) and is_lower(prev) {
+            break
+        }
+
+        set i = i - 1
+    }
+
+    return i
+}
+
+
+<<< ===================================================== >>
+<<< Cursor Movement >>
+<<< ===================================================== >>>
+
+proc move_word_right(
+    b : buffer.Buffer,
+    c : cursor.Cursor
+) -> cursor.Cursor {
+
+    let text =
+        buffer.as_string(b)
+
+    let next =
+        next_word_boundary(
+            text,
+            c.pos.offset
+        )
+
+    return cursor.move_to(
+        b,
+        c,
+        next
+    )
+}
+
+proc move_word_left(
+    b : buffer.Buffer,
+    c : cursor.Cursor
+) -> cursor.Cursor {
+
+    let text =
+        buffer.as_string(b)
+
+    let prev =
+        prev_word_boundary(
+            text,
+            c.pos.offset
+        )
+
+    return cursor.move_to(
+        b,
+        c,
+        prev
+    )
+}

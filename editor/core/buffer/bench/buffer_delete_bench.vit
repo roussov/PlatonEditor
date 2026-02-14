@@ -1,1 +1,205 @@
-#  delete benchmark
+space platon.editor.core.buffer.bench.buffer_delete_bench
+
+<<< Buffer Delete Benchmark ULTRA MAX+++ >>>
+<<< Simulates delete cost, gap movement, fragmentation, stress scenarios >>>
+
+form BufferMetrics {
+    deletes : int
+    chars_deleted : int
+    total_cost_units : int
+    max_single_delete_cost : int
+}
+
+form BufferState {
+    size : int
+    gap_position : int
+    version : int
+}
+
+let buffer = BufferState {
+    size: 1000000,
+    gap_position: 500000,
+    version: 1
+}
+
+<<< Simulate gap movement cost >>>
+
+proc move_gap_to(position : int) -> int {
+
+    let distance = 0
+
+    if position > buffer.gap_position {
+        set distance = position - buffer.gap_position
+    } else {
+        set distance = buffer.gap_position - position
+    }
+
+    set buffer.gap_position = position
+
+    return distance
+}
+
+<<< Simulate delete operation cost >>>
+
+proc delete_at(position : int, length : int) -> int {
+
+    let move_cost = move_gap_to(position)
+
+    let delete_cost = length
+
+    if position + length > buffer.size {
+        set delete_cost = buffer.size - position
+    }
+
+    set buffer.size = buffer.size - delete_cost
+    set buffer.version = buffer.version + 1
+
+    return move_cost + delete_cost
+}
+
+<<< Single delete benchmark >>>
+
+proc bench_single_delete(position : int, length : int) -> BufferMetrics {
+
+    let cost = delete_at(position, length)
+
+    return BufferMetrics {
+        deletes: 1,
+        chars_deleted: length,
+        total_cost_units: cost,
+        max_single_delete_cost: cost
+    }
+}
+
+<<< Sequential deletes benchmark >>>
+
+proc bench_sequential_deletes(
+    iterations : int,
+    delete_size : int
+) -> BufferMetrics {
+
+    let i = 0
+    let total_cost = 0
+    let max_cost = 0
+    let total_deleted = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        let cost = delete_at(buffer.gap_position, delete_size)
+
+        set total_cost = total_cost + cost
+        set total_deleted = total_deleted + delete_size
+
+        if cost > max_cost {
+            set max_cost = cost
+        }
+
+        set i = i + 1
+    }
+
+    return BufferMetrics {
+        deletes: iterations,
+        chars_deleted: total_deleted,
+        total_cost_units: total_cost,
+        max_single_delete_cost: max_cost
+    }
+}
+
+<<< Random delete simulation >>>
+
+proc bench_random_deletes(
+    iterations : int,
+    delete_size : int
+) -> BufferMetrics {
+
+    let i = 0
+    let total_cost = 0
+    let max_cost = 0
+    let total_deleted = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        let position = (i * 7919) % buffer.size
+
+        let cost = delete_at(position, delete_size)
+
+        set total_cost = total_cost + cost
+        set total_deleted = total_deleted + delete_size
+
+        if cost > max_cost {
+            set max_cost = cost
+        }
+
+        set i = i + 1
+    }
+
+    return BufferMetrics {
+        deletes: iterations,
+        chars_deleted: total_deleted,
+        total_cost_units: total_cost,
+        max_single_delete_cost: max_cost
+    }
+}
+
+<<< Worst-case delete scenario >>>
+
+proc stress_worst_case(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        delete_at(0, 1)
+
+        set i = i + 1
+    }
+}
+
+<<< Massive fragmentation simulation >>>
+
+proc stress_fragmentation(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        delete_at((i * 13) % buffer.size, 5)
+
+        set i = i + 1
+    }
+}
+
+<<< Reset buffer state >>>
+
+proc reset_buffer() {
+
+    set buffer.size = 1000000
+    set buffer.gap_position = 500000
+    set buffer.version = 1
+}
+
+<<< Full buffer delete benchmark suite >>>
+
+proc run_buffer_delete_bench_ultra() {
+
+    reset_buffer()
+
+    bench_single_delete(1000, 10)
+    bench_sequential_deletes(1000, 5)
+    bench_random_deletes(1000, 3)
+
+    stress_worst_case(5000)
+    stress_fragmentation(5000)
+}

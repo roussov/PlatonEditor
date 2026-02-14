@@ -1,1 +1,253 @@
-#  operation journal
+space platon.editor.core.buffer.transaction.journal
+
+<<< Transaction Journal Engine ULTRA MAX >>>
+<<< Append-only log, commit groups, rollback support, deterministic replay >>>
+
+
+<<< ===================================================== >>
+<<< Models >>
+<<< ===================================================== >>>
+
+form JournalEntry {
+    tx_id     : int
+    op_kind   : int
+    position  : int
+    length    : int
+    payload   : string
+}
+
+form Journal {
+    entries        : [JournalEntry]
+    size           : int
+    capacity       : int
+    current_tx     : int
+    committed_tx   : int
+}
+
+const OP_INSERT : int = 0
+const OP_DELETE : int = 1
+const OP_REPLACE : int = 2
+
+const DEFAULT_CAPACITY : int = 1024
+
+
+<<< ===================================================== >>
+<<< Initialization >>
+<<< ===================================================== >>>
+
+proc new() -> Journal {
+
+    return Journal {
+        entries: [],
+        size: 0,
+        capacity: DEFAULT_CAPACITY,
+        current_tx: 0,
+        committed_tx: -1
+    }
+}
+
+
+<<< ===================================================== >>
+<<< Internal Capacity Handling >>
+<<< ===================================================== >>>
+
+proc ensure_capacity(j : Journal) -> Journal {
+
+    if j.size < j.capacity {
+        return j
+    }
+
+    set j.capacity = j.capacity * 2
+
+    return j
+}
+
+
+<<< ===================================================== >>
+<<< Transaction Control >>
+<<< ===================================================== >>>
+
+proc begin(j : Journal) -> Journal {
+
+    set j.current_tx = j.current_tx + 1
+
+    return j
+}
+
+proc commit(j : Journal) -> Journal {
+
+    set j.committed_tx = j.current_tx
+
+    return j
+}
+
+proc rollback_to(j : Journal, tx_id : int) -> Journal {
+
+    let i = j.size - 1
+
+    loop {
+
+        if i < 0 {
+            break
+        }
+
+        if j.entries[i].tx_id > tx_id {
+
+            set j.size = j.size - 1
+        }
+
+        set i = i - 1
+    }
+
+    set j.current_tx = tx_id
+    set j.committed_tx = tx_id
+
+    return j
+}
+
+
+<<< ===================================================== >>
+<<< Recording Operations >>
+<<< ===================================================== >>>
+
+proc record_insert(
+    j : Journal,
+    pos : int,
+    text : string
+) -> Journal {
+
+    set j = ensure_capacity(j)
+
+    let entry = JournalEntry {
+        tx_id: j.current_tx,
+        op_kind: OP_INSERT,
+        position: pos,
+        length: text.length,
+        payload: text
+    }
+
+    set j.entries = j.entries + [entry]
+    set j.size = j.size + 1
+
+    return j
+}
+
+proc record_delete(
+    j : Journal,
+    pos : int,
+    len : int,
+    old_text : string
+) -> Journal {
+
+    set j = ensure_capacity(j)
+
+    let entry = JournalEntry {
+        tx_id: j.current_tx,
+        op_kind: OP_DELETE,
+        position: pos,
+        length: len,
+        payload: old_text
+    }
+
+    set j.entries = j.entries + [entry]
+    set j.size = j.size + 1
+
+    return j
+}
+
+proc record_replace(
+    j : Journal,
+    pos : int,
+    len : int,
+    old_text : string
+) -> Journal {
+
+    set j = ensure_capacity(j)
+
+    let entry = JournalEntry {
+        tx_id: j.current_tx,
+        op_kind: OP_REPLACE,
+        position: pos,
+        length: len,
+        payload: old_text
+    }
+
+    set j.entries = j.entries + [entry]
+    set j.size = j.size + 1
+
+    return j
+}
+
+
+<<< ===================================================== >>
+<<< Replay >>
+<<< ===================================================== >>>
+
+proc replay_count(j : Journal) -> int {
+    return j.size
+}
+
+proc get_entry(j : Journal, index : int) -> JournalEntry {
+    return j.entries[index]
+}
+
+
+<<< ===================================================== >>
+<<< Deterministic Hash (Journal Integrity) >>
+<<< ===================================================== >>>
+
+proc checksum(j : Journal) -> int {
+
+    let hash = 0
+    let i = 0
+
+    loop {
+
+        if i >= j.size {
+            break
+        }
+
+        let e = j.entries[i]
+
+        set hash =
+            (hash * 31 +
+             e.tx_id +
+             e.position +
+             e.length) % 2147483647
+
+        set i = i + 1
+    }
+
+    return hash
+}
+
+
+<<< ===================================================== >>
+<<< Compaction >>
+<<< ===================================================== >>>
+
+proc compact(j : Journal) -> Journal {
+
+    if j.size < j.capacity / 2 {
+        return j
+    }
+
+    set j.capacity = j.size
+
+    return j
+}
+
+
+<<< ===================================================== >>
+<<< Reset >>
+<<< ===================================================== >>>
+
+proc clear(j : Journal) -> Journal {
+
+    set j.entries = []
+    set j.size = 0
+    set j.current_tx = 0
+    set j.committed_tx = -1
+
+    return j
+}
