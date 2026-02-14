@@ -1,0 +1,7 @@
+space platon.languages.clojure
+
+form ClojureConfig {
+    tier : string
+}
+
+proc register() {}

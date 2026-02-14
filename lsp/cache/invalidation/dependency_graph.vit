@@ -1,0 +1,7 @@
+
+space platon.lsp.cache.invalidation
+
+form DepNode { id : string }
+
+proc add_dependency(a : string, b : string) {}
+proc invalidate_tree(id : string) {}

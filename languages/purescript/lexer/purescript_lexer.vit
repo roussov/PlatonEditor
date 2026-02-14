@@ -1,0 +1,2 @@
+# purescript lexer module
+proc lexer_entry() { }

@@ -1,0 +1,14 @@
+space platon.editor.fs.mmap
+
+form MMapFile {
+    fd : int
+    size : int
+    writable : bool
+}
+
+proc open(path : string, writable : bool) -> MMapFile {
+    give MMapFile { fd: 0, size: 0, writable: writable }
+}
+
+proc close(m : MMapFile) {}
+proc flush(m : MMapFile) {}

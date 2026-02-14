@@ -1,0 +1,5 @@
+space platon.bench.multi_thread.workloads
+
+proc run_search_workload() {
+    # simulate search
+}

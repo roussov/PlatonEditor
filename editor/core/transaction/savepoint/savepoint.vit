@@ -1,0 +1,4 @@
+space platon.editor.core.transaction.savepoint
+
+proc create(name : string) {}
+proc rollback_to(name : string) {}

@@ -1,0 +1,2 @@
+# terraform lexer module
+proc lexer_entry() { }

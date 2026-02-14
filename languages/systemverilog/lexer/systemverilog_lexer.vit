@@ -1,0 +1,2 @@
+# systemverilog lexer module
+proc lexer_entry() { }

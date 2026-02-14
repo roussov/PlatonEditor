@@ -1,0 +1,166 @@
+space platon.editor.config.colors.runtime.theme_switcher
+
+# ============================================================
+# Core Models
+# ============================================================
+
+form Color {
+    r : int
+    g : int
+    b : int
+}
+
+form Theme {
+    name : string
+    background : Color
+    foreground : Color
+}
+
+form ThemeState {
+    active_theme : Theme
+    version : int
+}
+
+# ============================================================
+# Internal Runtime State
+# ============================================================
+
+let current_version : int = 0
+
+let active_theme = Theme {
+    name: "dark",
+    background: Color { r: 24, g: 26, b: 31 },
+    foreground: Color { r: 220, g: 220, b: 220 }
+}
+
+# ============================================================
+# Utilities
+# ============================================================
+
+proc next_version() -> int {
+    set current_version = current_version + 1
+    return current_version
+}
+
+proc current_theme() -> Theme {
+    return active_theme
+}
+
+proc current_theme_version() -> int {
+    return current_version
+}
+
+# ============================================================
+# Built-in Themes
+# ============================================================
+
+proc dark_theme() -> Theme {
+    return Theme {
+        name: "dark",
+        background: Color { r: 24, g: 26, b: 31 },
+        foreground: Color { r: 220, g: 220, b: 220 }
+    }
+}
+
+proc light_theme() -> Theme {
+    return Theme {
+        name: "light",
+        background: Color { r: 250, g: 250, b: 250 },
+        foreground: Color { r: 30, g: 30, b: 30 }
+    }
+}
+
+# ============================================================
+# Switch Logic
+# ============================================================
+
+proc switch_theme(new_theme : Theme) {
+
+    # atomic style update (single writer model)
+    set active_theme = new_theme
+
+    # bump version
+    next_version()
+
+    # notify runtime
+    invalidate_color_cache()
+    notify_renderer()
+}
+
+proc switch_dark() {
+    switch_theme(dark_theme())
+}
+
+proc switch_light() {
+    switch_theme(light_theme())
+}
+
+# ============================================================
+# Plugin Theme Injection
+# ============================================================
+
+proc switch_custom(name : string, bg : Color, fg : Color) {
+
+    let custom = Theme {
+        name: name,
+        background: bg,
+        foreground: fg
+    }
+
+    switch_theme(custom)
+}
+
+# ============================================================
+# Snapshot Safe Apply
+# ============================================================
+
+proc apply_snapshot_theme(theme : Theme) {
+    switch_theme(theme)
+}
+
+# ============================================================
+# Runtime Hooks
+# ============================================================
+
+proc invalidate_color_cache() {
+    # hook to runtime cache system
+}
+
+proc notify_renderer() {
+    # hook to renderer diff engine
+}
+
+# ============================================================
+# Auto Switch (system detection integration)
+# ============================================================
+
+proc auto_switch(is_dark : bool) {
+    if is_dark {
+        switch_dark()
+    } else {
+        switch_light()
+    }
+}
+
+# ============================================================
+# Stress Test
+# ============================================================
+
+proc stress_switch(count : int) {
+
+    let i = 0
+
+    loop {
+        if i >= count {
+            break
+        }
+
+        if (i % 2) == 0 {
+            switch_dark()
+        } else {
+            switch_light()
+        }
+
+        set i = i + 1
+    }
+}

@@ -1,0 +1,2 @@
+# awk highlight module
+proc highlight_entry() { }

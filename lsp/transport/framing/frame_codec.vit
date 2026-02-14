@@ -1,0 +1,5 @@
+
+space platon.lsp.transport.framing
+
+proc encode_frame(msg : string) {}
+proc decode_frame(raw : string) {}

@@ -1,0 +1,6 @@
+space platon.editor.core.cursor
+
+form SelectionRange {
+    start : Position
+    end : Position
+}

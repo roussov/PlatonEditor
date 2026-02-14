@@ -1,0 +1,7 @@
+space platon.languages.gdscript
+
+form GdscriptConfig {
+    tier : string
+}
+
+proc register() {}

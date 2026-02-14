@@ -1,0 +1,2 @@
+# yaml lexer module
+proc lexer_entry() { }

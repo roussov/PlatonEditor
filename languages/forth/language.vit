@@ -1,0 +1,7 @@
+space platon.languages.forth
+
+form ForthConfig {
+    category : string
+}
+
+proc register() {}

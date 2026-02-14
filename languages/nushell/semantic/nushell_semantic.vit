@@ -1,0 +1,2 @@
+# nushell semantic module
+proc semantic_entry() { }

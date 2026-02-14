@@ -1,0 +1,7 @@
+space platon.languages.sql
+
+form SqlConfig {
+    tier : string
+}
+
+proc register() {}

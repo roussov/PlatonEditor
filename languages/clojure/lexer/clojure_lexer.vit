@@ -1,0 +1,2 @@
+# clojure lexer module
+proc lexer_entry() { }

@@ -1,0 +1,17 @@
+
+space platon.lsp.protocol.types
+
+form Position {
+    line : int
+    character : int
+}
+
+form Range {
+    start : Position
+    end : Position
+}
+
+form Location {
+    uri : string
+    range : Range
+}

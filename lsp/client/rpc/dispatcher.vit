@@ -1,0 +1,4 @@
+
+space platon.lsp.client.rpc
+
+proc dispatch(method : string) {}

@@ -1,0 +1,7 @@
+space platon.languages.makefile
+
+form MakefileConfig {
+    category : string
+}
+
+proc register() {}

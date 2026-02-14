@@ -1,0 +1,9 @@
+space platon.bench.multi_thread
+
+pull platon.bench.multi_thread.runners.master_runner
+pull platon.bench.multi_thread.metrics.report
+
+entry bench at platon.bench.multi_thread {
+    master_runner.run_all()
+    report.generate()
+}

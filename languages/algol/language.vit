@@ -1,0 +1,7 @@
+space platon.languages.algol
+
+form AlgolConfig {
+    category : string
+}
+
+proc register() {}

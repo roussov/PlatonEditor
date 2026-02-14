@@ -1,0 +1,7 @@
+space platon.languages.ring
+
+form RingConfig {
+    category : string
+}
+
+proc register() {}

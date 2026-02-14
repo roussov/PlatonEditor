@@ -1,0 +1,11 @@
+space platon.editor.core.history.dag
+
+form HistoryNode {
+    id : int
+    parent_ids : int
+    timestamp_ns : int
+}
+
+proc create(parent : int) -> HistoryNode {
+    give HistoryNode { id: 0, parent_ids: parent, timestamp_ns: 0 }
+}

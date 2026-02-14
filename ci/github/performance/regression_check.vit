@@ -1,0 +1,5 @@
+space platon.ci.github.performance
+
+proc check() {
+    # detect performance regression
+}

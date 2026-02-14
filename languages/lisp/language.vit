@@ -1,0 +1,7 @@
+space platon.languages.lisp
+
+form LispConfig {
+    category : string
+}
+
+proc register() {}

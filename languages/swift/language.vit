@@ -1,0 +1,7 @@
+space platon.languages.swift
+
+form SwiftConfig {
+    tier : string
+}
+
+proc register() {}

@@ -1,0 +1,6 @@
+
+name: Build Pipeline
+stages:
+  - checkout
+  - build
+  - archive

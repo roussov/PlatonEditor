@@ -1,0 +1,11 @@
+
+space platon.editor.terminal.pty
+
+form PTY {
+    id : int
+    active : bool
+}
+
+proc spawn(cmd : string) -> PTY {}
+proc write(p : PTY, data : string) {}
+proc close(p : PTY) {}

@@ -1,0 +1,2 @@
+# gams ast module
+proc ast_entry() { }

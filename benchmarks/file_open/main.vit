@@ -1,0 +1,9 @@
+space platon.bench.file_open
+
+pull platon.bench.file_open.runners.compare_runner
+pull platon.bench.file_open.metrics.report
+
+entry bench at platon.bench.file_open {
+    compare_runner.run_all()
+    report.generate()
+}

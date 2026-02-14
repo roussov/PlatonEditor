@@ -1,0 +1,2 @@
+# foxpro highlight module
+proc highlight_entry() { }

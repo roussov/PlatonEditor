@@ -1,0 +1,12 @@
+
+space platon.lsp.cache
+
+form CacheEntry {
+    key : string
+    version : int
+}
+
+proc get(key : string) {}
+proc put(key : string, value : string) {}
+proc invalidate(key : string) {}
+proc clear() {}

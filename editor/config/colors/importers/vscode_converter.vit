@@ -1,0 +1,170 @@
+space platon.editor.config.colors.importers.vscode
+
+# ============================================================
+# Models
+# ============================================================
+
+form Color {
+    r : int
+    g : int
+    b : int
+}
+
+form ThemeSemantic {
+    keyword : Color
+    function : Color
+    variable : Color
+    type_name : Color
+    string_lit : Color
+    number_lit : Color
+    comment : Color
+    macro : Color
+    operator : Color
+    background : Color
+}
+
+form KeyValue {
+    key : string
+    value : string
+}
+
+# ============================================================
+# Utilities
+# ============================================================
+
+proc hex_char_to_int(c : int) -> int {
+    if c >= 48 and c <= 57 {
+        return c - 48
+    }
+    if c >= 65 and c <= 70 {
+        return c - 55
+    }
+    if c >= 97 and c <= 102 {
+        return c - 87
+    }
+    return 0
+}
+
+proc parse_hex_color(hex : string) -> Color {
+    # expects "#RRGGBB"
+    let r = hex_char_to_int(hex[1]) * 16 + hex_char_to_int(hex[2])
+    let g = hex_char_to_int(hex[3]) * 16 + hex_char_to_int(hex[4])
+    let b = hex_char_to_int(hex[5]) * 16 + hex_char_to_int(hex[6])
+
+    return Color { r: r, g: g, b: b }
+}
+
+# ============================================================
+# Scope Mapping (VSCode → Platon)
+# ============================================================
+
+proc map_scope(scope : string, color : Color, theme : ThemeSemantic) -> ThemeSemantic {
+
+    if scope == "keyword" or scope == "storage.type" {
+        theme.keyword = color
+        return theme
+    }
+
+    if scope == "entity.name.function" {
+        theme.function = color
+        return theme
+    }
+
+    if scope == "variable" {
+        theme.variable = color
+        return theme
+    }
+
+    if scope == "entity.name.type" {
+        theme.type_name = color
+        return theme
+    }
+
+    if scope == "string" {
+        theme.string_lit = color
+        return theme
+    }
+
+    if scope == "constant.numeric" {
+        theme.number_lit = color
+        return theme
+    }
+
+    if scope == "comment" {
+        theme.comment = color
+        return theme
+    }
+
+    if scope == "entity.name.macro" {
+        theme.macro = color
+        return theme
+    }
+
+    return theme
+}
+
+# ============================================================
+# Conversion Entry
+# ============================================================
+
+proc convert_vscode_theme(entries : [KeyValue]) -> ThemeSemantic {
+
+    let theme = ThemeSemantic {
+        keyword: Color { r: 120, g: 160, b: 255 },
+        function: Color { r: 100, g: 200, b: 255 },
+        variable: Color { r: 220, g: 220, b: 220 },
+        type_name: Color { r: 150, g: 220, b: 150 },
+        string_lit: Color { r: 200, g: 180, b: 120 },
+        number_lit: Color { r: 180, g: 140, b: 255 },
+        comment: Color { r: 120, g: 130, b: 140 },
+        macro: Color { r: 255, g: 160, b: 120 },
+        operator: Color { r: 180, g: 180, b: 180 },
+        background: Color { r: 24, g: 26, b: 31 }
+    }
+
+    let i = 0
+
+    loop {
+        if i >= len(entries) {
+            break
+        }
+
+        let kv = entries[i]
+
+        if kv.key == "editor.background" {
+            theme.background = parse_hex_color(kv.value)
+        } else {
+            let c = parse_hex_color(kv.value)
+            set theme = map_scope(kv.key, c, theme)
+        }
+
+        set i = i + 1
+    }
+
+    return theme
+}
+
+# ============================================================
+# Bulk Stress Conversion
+# ============================================================
+
+proc stress_convert(count : int) {
+
+    let dummy = [
+        KeyValue { key: "keyword", value: "#FF0000" },
+        KeyValue { key: "string", value: "#00FF00" },
+        KeyValue { key: "entity.name.function", value: "#0000FF" }
+    ]
+
+    let i = 0
+
+    loop {
+        if i >= count {
+            break
+        }
+
+        convert_vscode_theme(dummy)
+
+        set i = i + 1
+    }
+}

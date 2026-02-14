@@ -1,0 +1,5 @@
+space platon.bench.stress.metrics
+
+proc generate() {
+    # generate full stress benchmark report (JSON/CSV)
+}

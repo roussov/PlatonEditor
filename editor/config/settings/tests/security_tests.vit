@@ -1,0 +1,207 @@
+space platon.editor.config.settings.tests.security
+
+<<< Security & Vault ULTRA MAX++ Test Suite >>>
+<<< Covers lock state, unlock flow, store limits, rotation, wipe, stress >>>
+
+proc assert_true(cond : bool) {
+    if not cond {
+        panic()
+    }
+}
+
+proc assert_false(cond : bool) {
+    if cond {
+        panic()
+    }
+}
+
+proc assert_eq_int(a : int, b : int) {
+    if a != b {
+        panic()
+    }
+}
+
+<<< Locked vault must reject store >>>
+
+proc test_locked_reject_store() {
+
+    lock_vault()
+
+    let result = store_secret("token", "123")
+
+    assert_false(result.success)
+}
+
+<<< Unlock then store success >>>
+
+proc test_unlock_store_success() {
+
+    unlock_vault("pass")
+
+    let result = store_secret("token", "abc")
+
+    assert_true(result.success)
+
+    lock_vault()
+}
+
+<<< Retrieve blocked when locked >>>
+
+proc test_retrieve_when_locked() {
+
+    lock_vault()
+
+    let value = retrieve_secret("token")
+
+    assert_true(value == "")
+}
+
+<<< Master key rotation increments version >>>
+
+proc test_key_rotation() {
+
+    unlock_vault("pass")
+
+    let before = current_vault_version()
+
+    let result = rotate_master_key()
+
+    assert_true(result.success)
+
+    let after = current_vault_version()
+
+    assert_true(after > before)
+
+    lock_vault()
+}
+
+<<< Secure wipe resets count >>>
+
+proc test_secure_wipe() {
+
+    unlock_vault("pass")
+
+    store_secret("a", "1")
+    store_secret("b", "2")
+
+    secure_wipe()
+
+    assert_eq_int(vault.entries_count, 0)
+
+    lock_vault()
+}
+
+<<< Store limit enforcement >>>
+
+proc test_store_limit() {
+
+    unlock_vault("pass")
+
+    let i = 0
+
+    loop {
+        if i >= MAX_VAULT_ENTRIES {
+            break
+        }
+
+        store_secret("k", "v")
+
+        set i = i + 1
+    }
+
+    let result = store_secret("overflow", "x")
+
+    assert_false(result.success)
+
+    lock_vault()
+}
+
+<<< Stress store + wipe cycles >>>
+
+proc test_stress_store_wipe() {
+
+    unlock_vault("pass")
+
+    let i = 0
+
+    loop {
+        if i >= 10000 {
+            break
+        }
+
+        store_secret("key", "value")
+        secure_wipe()
+
+        set i = i + 1
+    }
+
+    lock_vault()
+
+    assert_true(true)
+}
+
+<<< Stress rotation cycles >>>
+
+proc test_stress_rotation() {
+
+    unlock_vault("pass")
+
+    let i = 0
+
+    loop {
+        if i >= 20000 {
+            break
+        }
+
+        rotate_master_key()
+
+        set i = i + 1
+    }
+
+    lock_vault()
+
+    assert_true(true)
+}
+
+<<< Combined scenario stress >>>
+
+proc test_combined_security_scenario() {
+
+    unlock_vault("pass")
+
+    let i = 0
+
+    loop {
+        if i >= 5000 {
+            break
+        }
+
+        store_secret("k", "v")
+        rotate_master_key()
+
+        if i % 10 == 0 {
+            secure_wipe()
+        }
+
+        set i = i + 1
+    }
+
+    lock_vault()
+
+    assert_true(true)
+}
+
+<<< Master runner >>>
+
+proc run_security_tests_ultra() {
+
+    test_locked_reject_store()
+    test_unlock_store_success()
+    test_retrieve_when_locked()
+    test_key_rotation()
+    test_secure_wipe()
+    test_store_limit()
+    test_stress_store_wipe()
+    test_stress_rotation()
+    test_combined_security_scenario()
+}

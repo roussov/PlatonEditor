@@ -1,0 +1,5 @@
+space platon.editor.core.cursor.multi
+
+proc add_cursor() {}
+proc remove_cursor(id : int) {}
+proc clear_all() {}

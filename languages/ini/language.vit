@@ -1,0 +1,7 @@
+space platon.languages.ini
+
+form IniConfig {
+    category : string
+}
+
+proc register() {}

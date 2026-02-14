@@ -1,0 +1,5 @@
+
+space platon.lsp.jsonrpc.framing
+
+proc read_header(raw : string) {}
+proc write_header(length : int) {}

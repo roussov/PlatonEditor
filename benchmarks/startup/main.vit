@@ -1,0 +1,9 @@
+space platon.bench.startup
+
+pull platon.bench.startup.runners.master_runner
+pull platon.bench.startup.metrics.report
+
+entry bench at platon.bench.startup {
+    master_runner.run_all()
+    report.generate()
+}

@@ -1,0 +1,2 @@
+# rescript diagnostics module
+proc diagnostics_entry() { }

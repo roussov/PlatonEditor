@@ -1,0 +1,9 @@
+
+space platon.editor.lang_engine.parser
+
+form ParseResult {
+    success : bool
+}
+
+proc parse_full() {}
+proc parse_incremental() {}

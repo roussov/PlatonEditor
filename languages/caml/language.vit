@@ -1,0 +1,7 @@
+space platon.languages.caml
+
+form CamlConfig {
+    category : string
+}
+
+proc register() {}

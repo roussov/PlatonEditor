@@ -1,0 +1,7 @@
+space platon.languages.xml
+
+form XmlConfig {
+    category : string
+}
+
+proc register() {}

@@ -1,0 +1,10 @@
+
+space platon.editor.lang_engine.formatter
+
+form FormatOptions {
+    indent_size : int
+    use_tabs : bool
+}
+
+proc format_full() {}
+proc format_range(start_line : int, end_line : int) {}

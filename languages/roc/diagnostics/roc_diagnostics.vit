@@ -1,0 +1,2 @@
+# roc diagnostics module
+proc diagnostics_entry() { }

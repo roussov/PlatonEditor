@@ -1,0 +1,11 @@
+
+space platon.editor.lang_engine.lexer
+
+form Token {
+    kind : string
+    start : int
+    end : int
+}
+
+proc lex_full() {}
+proc lex_incremental() {}

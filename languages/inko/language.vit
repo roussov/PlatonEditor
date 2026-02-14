@@ -1,0 +1,7 @@
+space platon.languages.inko
+
+form InkoConfig {
+    category : string
+}
+
+proc register() {}

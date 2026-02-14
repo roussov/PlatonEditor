@@ -1,0 +1,5 @@
+space platon.bench.startup.phases
+
+proc run() {
+    # LSP startup phase
+}

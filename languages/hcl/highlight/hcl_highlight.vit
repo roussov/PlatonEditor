@@ -1,0 +1,2 @@
+# hcl highlight module
+proc highlight_entry() { }

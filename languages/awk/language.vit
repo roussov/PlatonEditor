@@ -1,0 +1,7 @@
+space platon.languages.awk
+
+form AwkConfig {
+    category : string
+}
+
+proc register() {}

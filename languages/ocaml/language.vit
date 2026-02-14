@@ -1,0 +1,7 @@
+space platon.languages.ocaml
+
+form OcamlConfig {
+    category : string
+}
+
+proc register() {}

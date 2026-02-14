@@ -1,0 +1,4 @@
+space platon.languages.holyc.lsp
+
+proc completion() {}
+proc hover() {}

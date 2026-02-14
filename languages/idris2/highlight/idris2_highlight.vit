@@ -1,0 +1,2 @@
+# idris2 highlight module
+proc highlight_entry() { }

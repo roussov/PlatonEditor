@@ -1,0 +1,7 @@
+space platon.languages.gradle
+
+form GradleConfig {
+    category : string
+}
+
+proc register() {}

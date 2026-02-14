@@ -1,0 +1,3 @@
+space platon.editor.debug.breakpoints.logpoint
+
+proc add_logpoint(file : string, line : int, message : string) {}

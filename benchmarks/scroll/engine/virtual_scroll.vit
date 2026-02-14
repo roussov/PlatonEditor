@@ -1,0 +1,5 @@
+space platon.bench.scroll.engine
+
+proc run_virtual_scroll() {
+    # simulate virtualized rendering scroll
+}

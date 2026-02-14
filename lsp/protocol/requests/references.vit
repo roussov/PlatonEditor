@@ -1,0 +1,5 @@
+space platon.lsp.protocol.requests
+
+form ReferencesRequest {
+    id : int
+}

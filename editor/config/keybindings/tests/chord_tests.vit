@@ -1,0 +1,168 @@
+space platon.editor.config.keybindings.tests.chord
+
+# Chord Engine Test Suite ULTRA MAX# Covers single step, multi step, timeout, mode isolation, stress
+form KeyStroke {
+    code : int
+    ctrl : bool
+    alt  : bool
+    shift : bool
+}
+
+form ActiveState {
+    node_index : int
+    last_timestamp : int
+    active : bool
+    mode : string
+}
+
+proc assert_true(cond : bool) {
+    if not cond {
+        panic()
+    }
+}
+
+proc assert_eq_str(a : string, b : string) {
+    if a != b {
+        panic()
+    }
+}
+
+# Single step test
+proc test_single_step() {
+
+    let state = ActiveState {
+        node_index: 0,
+        last_timestamp: 0,
+        active: false,
+        mode: "normal"
+    }
+
+    let result = process_key(
+        state,
+        "normal",
+        KeyStroke {
+            code: 65,
+            ctrl: false,
+            alt: false,
+            shift: false
+        }
+    )
+
+    assert_eq_str(result, "")
+}
+
+# Two step execution test
+proc test_two_step_execution() {
+
+    let state = ActiveState {
+        node_index: 0,
+        last_timestamp: 0,
+        active: false,
+        mode: "normal"
+    }
+
+    process_key(
+        state,
+        "normal",
+        KeyStroke { code: 65, ctrl: true, alt: false, shift: false }
+    )
+
+    let result = process_key(
+        state,
+        "normal",
+        KeyStroke { code: 66, ctrl: false, alt: false, shift: false }
+    )
+
+    assert_eq_str(result, "command.executed")
+}
+
+# Mode isolation test
+proc test_mode_isolation() {
+
+    let state = ActiveState {
+        node_index: 0,
+        last_timestamp: 0,
+        active: false,
+        mode: "normal"
+    }
+
+    process_key(
+        state,
+        "normal",
+        KeyStroke { code: 65, ctrl: true, alt: false, shift: false }
+    )
+
+    let result = process_key(
+        state,
+        "insert",
+        KeyStroke { code: 66, ctrl: false, alt: false, shift: false }
+    )
+
+    assert_eq_str(result, "")
+}
+
+# Timeout simulation test
+proc test_timeout() {
+
+    let state = ActiveState {
+        node_index: 0,
+        last_timestamp: 0,
+        active: false,
+        mode: "normal"
+    }
+
+    process_key(
+        state,
+        "normal",
+        KeyStroke { code: 65, ctrl: true, alt: false, shift: false }
+    )
+
+# Simulated timeout by calling reset directly    reset_state(state)
+
+    let result = process_key(
+        state,
+        "normal",
+        KeyStroke { code: 66, ctrl: false, alt: false, shift: false }
+    )
+
+    assert_eq_str(result, "")
+}
+
+# Stress execution test
+proc test_stress_execution() {
+
+    let state = ActiveState {
+        node_index: 0,
+        last_timestamp: 0,
+        active: false,
+        mode: "normal"
+    }
+
+    let i = 0
+
+    loop {
+        if i >= 10000 {
+            break
+        }
+
+        process_key(
+            state,
+            "normal",
+            KeyStroke { code: 65, ctrl: true, alt: false, shift: false }
+        )
+
+        set i = i + 1
+    }
+
+    assert_true(true)
+}
+
+# Master runner
+proc run_chord_tests() {
+
+    test_single_step()
+    test_two_step_execution()
+    test_mode_isolation()
+    test_timeout()
+    test_stress_execution()
+}

@@ -1,0 +1,12 @@
+space platon.editor.core.rope
+
+form RopeNode {
+    left : int
+    right : int
+    weight : int
+    height : int
+}
+
+proc new_node() -> RopeNode {
+    give RopeNode { left: 0, right: 0, weight: 0, height: 1 }
+}

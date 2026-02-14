@@ -1,0 +1,2 @@
+# verilog lexer module
+proc lexer_entry() { }

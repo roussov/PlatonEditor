@@ -1,0 +1,7 @@
+space platon.languages.hcl
+
+form HclConfig {
+    category : string
+}
+
+proc register() {}

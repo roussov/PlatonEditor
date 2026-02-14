@@ -1,0 +1,7 @@
+space platon.languages.hack
+
+form HackConfig {
+    category : string
+}
+
+proc register() {}

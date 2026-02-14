@@ -1,0 +1,7 @@
+space platon.languages.koka
+
+form KokaConfig {
+    category : string
+}
+
+proc register() {}

@@ -1,0 +1,7 @@
+space platon.languages.tcl
+
+form TclConfig {
+    category : string
+}
+
+proc register() {}

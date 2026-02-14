@@ -1,0 +1,14 @@
+
+space platon.editor.term.thread_pool
+
+form TermThreadPool {
+    workers : int
+    running : bool
+}
+
+proc init(workers : int) -> TermThreadPool {
+    give TermThreadPool { workers: workers, running: true }
+}
+
+proc submit(pool : TermThreadPool, task_id : int) {}
+proc shutdown(pool : TermThreadPool) {}

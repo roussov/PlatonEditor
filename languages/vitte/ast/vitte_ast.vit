@@ -1,0 +1,5 @@
+space platon.languages.vitte.ast
+
+form AstNode {
+    kind : string
+}

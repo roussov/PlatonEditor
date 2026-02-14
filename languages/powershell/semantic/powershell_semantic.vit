@@ -1,0 +1,2 @@
+# powershell semantic module
+proc semantic_entry() { }

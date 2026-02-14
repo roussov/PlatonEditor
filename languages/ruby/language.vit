@@ -1,0 +1,7 @@
+space platon.languages.ruby
+
+form RubyConfig {
+    category : string
+}
+
+proc register() {}

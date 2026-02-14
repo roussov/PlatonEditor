@@ -1,0 +1,178 @@
+space platon.editor.config.colors.tests.import
+
+# ============================================================
+# Test Models (minimal local mirror)
+# ============================================================
+
+form Color {
+    r : int
+    g : int
+    b : int
+}
+
+form KeyValue {
+    key : string
+    value : string
+}
+
+# ============================================================
+# Assertions (simple local test helpers)
+# ============================================================
+
+proc assert_true(cond : bool) {
+    if not cond {
+        panic()
+    }
+}
+
+proc assert_eq_int(a : int, b : int) {
+    if a != b {
+        panic()
+    }
+}
+
+# ============================================================
+# HEX Parsing Tests
+# ============================================================
+
+proc test_hex_parse_basic() {
+
+    let c = parse_hex_color("#FF00AA")
+
+    assert_eq_int(c.r, 255)
+    assert_eq_int(c.g, 0)
+    assert_eq_int(c.b, 170)
+}
+
+proc test_hex_parse_lowercase() {
+
+    let c = parse_hex_color("#00ff10")
+
+    assert_eq_int(c.r, 0)
+    assert_eq_int(c.g, 255)
+    assert_eq_int(c.b, 16)
+}
+
+# ============================================================
+# VSCode Mapping Tests
+# ============================================================
+
+proc test_scope_keyword_mapping() {
+
+    let entries = [
+        KeyValue { key: "keyword", value: "#112233" }
+    ]
+
+    let theme = convert_vscode_theme(entries)
+
+    assert_eq_int(theme.keyword.r, 17)
+    assert_eq_int(theme.keyword.g, 34)
+    assert_eq_int(theme.keyword.b, 51)
+}
+
+proc test_scope_string_mapping() {
+
+    let entries = [
+        KeyValue { key: "string", value: "#AA5500" }
+    ]
+
+    let theme = convert_vscode_theme(entries)
+
+    assert_eq_int(theme.string_lit.r, 170)
+    assert_eq_int(theme.string_lit.g, 85)
+    assert_eq_int(theme.string_lit.b, 0)
+}
+
+# ============================================================
+# Background Override Test
+# ============================================================
+
+proc test_background_override() {
+
+    let entries = [
+        KeyValue { key: "editor.background", value: "#101010" }
+    ]
+
+    let theme = convert_vscode_theme(entries)
+
+    assert_eq_int(theme.background.r, 16)
+    assert_eq_int(theme.background.g, 16)
+    assert_eq_int(theme.background.b, 16)
+}
+
+# ============================================================
+# Fallback Behavior Test
+# ============================================================
+
+proc test_unknown_scope_safe() {
+
+    let entries = [
+        KeyValue { key: "unknown.scope", value: "#FFFFFF" }
+    ]
+
+    let theme = convert_vscode_theme(entries)
+
+    # should not crash; variable fallback remains default
+    assert_true(theme.variable.r >= 0)
+}
+
+# ============================================================
+# WCAG Validation Post Import
+# ============================================================
+
+proc test_import_wcag_pass() {
+
+    let entries = [
+        KeyValue { key: "keyword", value: "#FFFFFF" },
+        KeyValue { key: "editor.background", value: "#000000" }
+    ]
+
+    let theme = convert_vscode_theme(entries)
+
+    let result = validate_contrast(theme.keyword, theme.background)
+
+    assert_true(result.aa_pass)
+}
+
+# ============================================================
+# Bulk Import Stress
+# ============================================================
+
+proc test_bulk_import_stress() {
+
+    let dummy = [
+        KeyValue { key: "keyword", value: "#FF0000" },
+        KeyValue { key: "string", value: "#00FF00" },
+        KeyValue { key: "entity.name.function", value: "#0000FF" }
+    ]
+
+    let i = 0
+
+    loop {
+        if i >= 10000 {
+            break
+        }
+
+        convert_vscode_theme(dummy)
+
+        set i = i + 1
+    }
+
+    assert_true(true)
+}
+
+# ============================================================
+# Entry Test Runner
+# ============================================================
+
+proc run_import_tests() {
+
+    test_hex_parse_basic()
+    test_hex_parse_lowercase()
+    test_scope_keyword_mapping()
+    test_scope_string_mapping()
+    test_background_override()
+    test_unknown_scope_safe()
+    test_import_wcag_pass()
+    test_bulk_import_stress()
+}

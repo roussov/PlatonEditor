@@ -1,0 +1,7 @@
+space platon.languages.crystal
+
+form CrystalConfig {
+    category : string
+}
+
+proc register() {}

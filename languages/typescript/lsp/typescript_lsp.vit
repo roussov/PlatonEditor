@@ -1,0 +1,2 @@
+# typescript lsp module
+proc lsp_entry() { }

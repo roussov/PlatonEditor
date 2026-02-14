@@ -1,0 +1,2 @@
+# erlang lexer module
+proc lexer_entry() { }

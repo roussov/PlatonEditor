@@ -1,0 +1,6 @@
+
+space platon.lsp.transport.metrics
+
+proc bytes_sent() {}
+proc bytes_received() {}
+proc active_connections() {}

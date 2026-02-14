@@ -1,0 +1,7 @@
+space platon.languages.smalltalk
+
+form SmalltalkConfig {
+    category : string
+}
+
+proc register() {}

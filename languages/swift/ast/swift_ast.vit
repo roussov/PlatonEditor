@@ -1,0 +1,2 @@
+# swift ast module
+proc ast_entry() { }

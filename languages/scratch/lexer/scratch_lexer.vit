@@ -1,0 +1,2 @@
+# scratch lexer module
+proc lexer_entry() { }

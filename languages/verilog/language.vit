@@ -1,0 +1,7 @@
+space platon.languages.verilog
+
+form VerilogConfig {
+    category : string
+}
+
+proc register() {}

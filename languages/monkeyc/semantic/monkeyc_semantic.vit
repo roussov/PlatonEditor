@@ -1,0 +1,2 @@
+# monkeyc semantic module
+proc semantic_entry() { }

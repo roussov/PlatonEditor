@@ -1,0 +1,2 @@
+# java lexer module
+proc lexer_entry() { }

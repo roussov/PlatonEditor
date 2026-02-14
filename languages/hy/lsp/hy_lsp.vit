@@ -1,0 +1,2 @@
+# hy lsp module
+proc lsp_entry() { }

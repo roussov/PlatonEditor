@@ -1,0 +1,7 @@
+space platon.languages.ansible
+
+form AnsibleConfig {
+    category : string
+}
+
+proc register() {}

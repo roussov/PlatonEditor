@@ -1,0 +1,8 @@
+
+space platon.lsp.jsonrpc.error
+
+const ParseError = -32700
+const InvalidRequest = -32600
+const MethodNotFound = -32601
+const InvalidParams = -32602
+const InternalError = -32603

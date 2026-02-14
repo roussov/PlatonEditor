@@ -1,0 +1,177 @@
+space platon.editor.config.colors.runtime.system
+
+# ============================================================
+# Models
+# ============================================================
+
+form SystemTheme {
+    dark_mode : bool
+}
+
+form TerminalCapabilities {
+    truecolor : bool
+    colors_256 : bool
+    colors_16 : bool
+    is_tty : bool
+    is_ssh : bool
+}
+
+form SystemEnvironment {
+    theme : SystemTheme
+    term : TerminalCapabilities
+}
+
+# ============================================================
+# Environment Helpers (stub layer)
+# Engine layer will bind real OS calls
+# ============================================================
+
+proc env_get(name : string) -> string {
+    # Stub (engine should bind to OS getenv)
+    return ""
+}
+
+proc file_exists(path : string) -> bool {
+    # Stub (engine should bind to OS stat)
+    return false
+}
+
+# ============================================================
+# OS Theme Detection
+# ============================================================
+
+proc detect_dark_mode() -> bool {
+
+    # macOS (example heuristic)
+    let mac_pref = env_get("APPLE_INTERFACE_STYLE")
+    if mac_pref == "Dark" {
+        return true
+    }
+
+    # Linux (GTK heuristic)
+    let gtk = env_get("GTK_THEME")
+    if gtk == "dark" {
+        return true
+    }
+
+    # Windows (stub)
+    let win_pref = env_get("WIN_THEME")
+    if win_pref == "dark" {
+        return true
+    }
+
+    return false
+}
+
+# ============================================================
+# Terminal Color Detection
+# ============================================================
+
+proc detect_truecolor() -> bool {
+    let colorterm = env_get("COLORTERM")
+    if colorterm == "truecolor" {
+        return true
+    }
+    return false
+}
+
+proc detect_256_colors() -> bool {
+    let term = env_get("TERM")
+    if term == "xterm-256color" {
+        return true
+    }
+    return false
+}
+
+proc detect_16_colors() -> bool {
+    let term = env_get("TERM")
+    if term != "" {
+        return true
+    }
+    return false
+}
+
+# ============================================================
+# TTY / SSH Detection
+# ============================================================
+
+proc detect_tty() -> bool {
+    let tty = env_get("TERM")
+    return tty != ""
+}
+
+proc detect_ssh() -> bool {
+    let ssh = env_get("SSH_CONNECTION")
+    return ssh != ""
+}
+
+# ============================================================
+# Composite Detection
+# ============================================================
+
+proc detect_system_environment() -> SystemEnvironment {
+
+    let theme = SystemTheme {
+        dark_mode: detect_dark_mode()
+    }
+
+    let caps = TerminalCapabilities {
+        truecolor: detect_truecolor(),
+        colors_256: detect_256_colors(),
+        colors_16: detect_16_colors(),
+        is_tty: detect_tty(),
+        is_ssh: detect_ssh()
+    }
+
+    return SystemEnvironment {
+        theme: theme,
+        term: caps
+    }
+}
+
+# ============================================================
+# Fallback Strategy
+# ============================================================
+
+proc choose_color_depth(caps : TerminalCapabilities) -> int {
+
+    if caps.truecolor {
+        return 24
+    }
+
+    if caps.colors_256 {
+        return 256
+    }
+
+    if caps.colors_16 {
+        return 16
+    }
+
+    return 0
+}
+
+# ============================================================
+# Snapshot Integration Hook
+# ============================================================
+
+proc detect_and_prepare() -> SystemEnvironment {
+    return detect_system_environment()
+}
+
+# ============================================================
+# Stress detection (test helper)
+# ============================================================
+
+proc stress_detect(count : int) {
+    let i = 0
+
+    loop {
+        if i >= count {
+            break
+        }
+
+        detect_system_environment()
+
+        set i = i + 1
+    }
+}

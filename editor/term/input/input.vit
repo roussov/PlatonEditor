@@ -1,0 +1,11 @@
+
+space platon.editor.term.input
+
+form KeyEvent {
+    code : int
+    ctrl : bool
+    alt : bool
+    shift : bool
+}
+
+proc read_event() -> KeyEvent {}

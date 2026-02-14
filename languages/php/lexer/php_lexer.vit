@@ -1,0 +1,2 @@
+# php lexer module
+proc lexer_entry() { }

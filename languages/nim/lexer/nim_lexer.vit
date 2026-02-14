@@ -1,0 +1,2 @@
+# nim lexer module
+proc lexer_entry() { }

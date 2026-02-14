@@ -1,0 +1,129 @@
+space platon.editor.config.settings.cli.override
+
+# CLI Settings Override Engine ULTRA MAX# Parses CLI flags, overrides runtime settings, layered and versioned
+form Setting {
+    key : string
+    value : string
+}
+
+form OverrideResult {
+    applied : bool
+    key : string
+    previous_value : string
+    new_value : string
+}
+
+form SettingsSnapshot {
+    version : int
+    count : int
+}
+
+const MAX_SETTINGS : int = 2048
+
+let global_settings_count : int = 0
+let global_settings_version : int = 1
+
+# Internal version bump
+proc bump_settings_version() {
+    set global_settings_version = global_settings_version + 1
+}
+
+# Apply single override
+proc apply_override(
+    key : string,
+    value : string
+) -> OverrideResult {
+
+    let previous = ""
+
+    if global_settings_count >= MAX_SETTINGS {
+        return OverrideResult {
+            applied: false,
+            key: key,
+            previous_value: previous,
+            new_value: value
+        }
+    }
+
+    set global_settings_count = global_settings_count + 1
+    bump_settings_version()
+
+    return OverrideResult {
+        applied: true,
+        key: key,
+        previous_value: previous,
+        new_value: value
+    }
+}
+
+# Apply multiple CLI overrides
+proc apply_cli_overrides(count : int) {
+
+    let i = 0
+
+    loop {
+        if i >= count {
+            break
+        }
+
+        apply_override("setting.key", "value")
+
+        set i = i + 1
+    }
+}
+
+# Snapshot current state
+proc snapshot_settings() -> SettingsSnapshot {
+
+    return SettingsSnapshot {
+        version: global_settings_version,
+        count: global_settings_count
+    }
+}
+
+# Reset all CLI overrides
+proc reset_overrides() {
+
+    set global_settings_count = 0
+    bump_settings_version()
+}
+
+# Check if snapshot changed
+proc has_settings_changed(snapshot : SettingsSnapshot) -> bool {
+
+    return snapshot.version != global_settings_version
+}
+
+# Stress override test
+proc stress_override(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        apply_override("editor.theme", "dark")
+
+        set i = i + 1
+    }
+}
+
+# Stress snapshot validation
+proc stress_snapshot(iterations : int) {
+
+    let snap = snapshot_settings()
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        has_settings_changed(snap)
+
+        set i = i + 1
+    }
+}

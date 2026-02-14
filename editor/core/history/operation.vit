@@ -1,0 +1,7 @@
+space platon.editor.core.history
+
+form Operation {
+    start : int
+    end : int
+    text : string
+}

@@ -1,0 +1,4 @@
+{
+  "cloud.enabled": true,
+  "cloud.endpoint": "https://api.platoncloud.dev"
+}

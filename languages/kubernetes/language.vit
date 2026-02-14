@@ -1,0 +1,7 @@
+space platon.languages.kubernetes
+
+form KubernetesConfig {
+    category : string
+}
+
+proc register() {}

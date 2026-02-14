@@ -1,0 +1,5 @@
+space platon.lsp.protocol.requests
+
+form Code_actionRequest {
+    id : int
+}

@@ -1,0 +1,2 @@
+# coldfusion diagnostics module
+proc diagnostics_entry() { }

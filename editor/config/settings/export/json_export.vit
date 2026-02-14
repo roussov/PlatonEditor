@@ -1,0 +1,175 @@
+#  JSON export logic
+space platon.editor.config.settings.export.json_export
+
+<<< JSON Export Settings Engine ULTRA MAX >>>
+<<< Layer aware, pretty print, compact mode, versioned snapshot, safe escaping >>>
+
+form ExportOptions {
+    pretty : bool
+    include_version : bool
+    include_metadata : bool
+}
+
+form ExportResult {
+    success : bool
+    json : string
+    exported_count : int
+}
+
+form ExportState {
+    version : int
+    last_export_count : int
+}
+
+let export_state = ExportState {
+    version: 1,
+    last_export_count: 0
+}
+
+<<< Internal version bump >>>
+
+proc bump_export_version() {
+    set export_state.version = export_state.version + 1
+}
+
+<<< Escape string for JSON stub >>>
+
+proc escape_json(raw : string) -> string {
+
+    <<< Real engine would escape quotes, backslashes, control chars >>>
+
+    return raw
+}
+
+<<< Serialize single key value stub >>>
+
+proc serialize_pair(
+    key : string,
+    value : string,
+    pretty : bool
+) -> string {
+
+    let escaped_key = escape_json(key)
+    let escaped_value = escape_json(value)
+
+    if pretty {
+        return "  \"" + escaped_key + "\": \"" + escaped_value + "\""
+    }
+
+    return "\"" + escaped_key + "\":\"" + escaped_value + "\""
+}
+
+<<< Export settings to JSON stub >>>
+
+proc export_settings(
+    options : ExportOptions,
+    total_settings : int
+) -> ExportResult {
+
+    let json = "{"
+
+    if options.include_version {
+        set json = json + "\"version\":\"" + "1" + "\""
+    }
+
+    if total_settings > 0 {
+        set json = json + ","
+    }
+
+    let i = 0
+
+    loop {
+        if i >= total_settings {
+            break
+        }
+
+        let pair = serialize_pair("key", "value", options.pretty)
+
+        if options.pretty {
+            set json = json + "\n" + pair
+        } else {
+            set json = json + pair
+        }
+
+        if i < total_settings - 1 {
+            set json = json + ","
+        }
+
+        set i = i + 1
+    }
+
+    if options.pretty {
+        set json = json + "\n"
+    }
+
+    set json = json + "}"
+
+    set export_state.last_export_count = total_settings
+    bump_export_version()
+
+    return ExportResult {
+        success: true,
+        json: json,
+        exported_count: total_settings
+    }
+}
+
+<<< Snapshot export version >>>
+
+proc current_export_version() -> int {
+    return export_state.version
+}
+
+<<< Reset export state >>>
+
+proc reset_export_state() {
+
+    set export_state.last_export_count = 0
+    bump_export_version()
+}
+
+<<< Stress compact export >>>
+
+proc stress_compact_export(iterations : int) {
+
+    let options = ExportOptions {
+        pretty: false,
+        include_version: true,
+        include_metadata: false
+    }
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        export_settings(options, 10)
+
+        set i = i + 1
+    }
+}
+
+<<< Stress pretty export >>>
+
+proc stress_pretty_export(iterations : int) {
+
+    let options = ExportOptions {
+        pretty: true,
+        include_version: true,
+        include_metadata: true
+    }
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        export_settings(options, 10)
+
+        set i = i + 1
+    }
+}

@@ -1,0 +1,2 @@
+# cobol ast module
+proc ast_entry() { }

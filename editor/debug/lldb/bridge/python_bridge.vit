@@ -1,0 +1,4 @@
+space platon.editor.debug.lldb.bridge
+
+proc init_bridge() {}
+proc execute(cmd : string) {}

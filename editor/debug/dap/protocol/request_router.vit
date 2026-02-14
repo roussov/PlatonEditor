@@ -1,0 +1,3 @@
+space platon.editor.debug.dap.protocol
+
+proc route(command : string) {}

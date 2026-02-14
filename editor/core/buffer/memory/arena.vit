@@ -1,0 +1,5 @@
+space platon.editor.core.buffer.memory
+
+proc alloc(size : int) -> int {
+    give 0
+}

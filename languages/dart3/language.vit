@@ -1,0 +1,7 @@
+space platon.languages.dart3
+
+form Dart3Config {
+    category : string
+}
+
+proc register() {}

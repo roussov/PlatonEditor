@@ -1,0 +1,7 @@
+space platon.languages.visualbasic
+
+form VisualbasicConfig {
+    tier : string
+}
+
+proc register() {}

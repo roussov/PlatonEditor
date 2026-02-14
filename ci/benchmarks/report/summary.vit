@@ -1,0 +1,5 @@
+space platon.ci.benchmarks.report
+
+proc generate() {
+    # generate CI benchmark summary
+}

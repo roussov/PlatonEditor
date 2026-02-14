@@ -1,0 +1,2 @@
+# idris lexer module
+proc lexer_entry() { }

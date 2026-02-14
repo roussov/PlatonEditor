@@ -1,0 +1,7 @@
+space platon.languages.zig
+
+form ZigConfig {
+    tier : string
+}
+
+proc register() {}

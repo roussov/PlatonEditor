@@ -1,0 +1,18 @@
+space platon.bench.file_open.metrics.timer
+
+form Timer {
+    start_ns : int
+    end_ns   : int
+}
+
+proc start(t : Timer) {
+    t.start_ns = now_ns()
+}
+
+proc stop(t : Timer) {
+    t.end_ns = now_ns()
+}
+
+proc elapsed(t : Timer) -> int {
+    give t.end_ns - t.start_ns
+}

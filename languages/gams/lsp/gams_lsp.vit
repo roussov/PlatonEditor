@@ -1,0 +1,2 @@
+# gams lsp module
+proc lsp_entry() { }

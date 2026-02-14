@@ -1,0 +1,2 @@
+# haxe_old formatter module
+proc formatter_entry() { }

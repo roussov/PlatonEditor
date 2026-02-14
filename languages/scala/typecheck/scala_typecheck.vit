@@ -1,0 +1,2 @@
+# scala typecheck module
+proc typecheck_entry() { }

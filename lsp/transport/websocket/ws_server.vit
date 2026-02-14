@@ -1,0 +1,5 @@
+
+space platon.lsp.transport.websocket
+
+proc start_ws(port : int) {}
+proc broadcast(msg : string) {}

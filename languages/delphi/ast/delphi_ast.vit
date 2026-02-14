@@ -1,0 +1,2 @@
+# delphi ast module
+proc ast_entry() { }

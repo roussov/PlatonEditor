@@ -1,0 +1,2 @@
+# basic ast module
+proc ast_entry() { }

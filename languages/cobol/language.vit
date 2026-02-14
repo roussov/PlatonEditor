@@ -1,0 +1,7 @@
+space platon.languages.cobol
+
+form CobolConfig {
+    tier : string
+}
+
+proc register() {}

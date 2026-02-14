@@ -1,0 +1,7 @@
+space platon.languages.actionscript
+
+form ActionscriptConfig {
+    category : string
+}
+
+proc register() {}

@@ -1,0 +1,7 @@
+space platon.languages.php
+
+form PhpConfig {
+    tier : string
+}
+
+proc register() {}

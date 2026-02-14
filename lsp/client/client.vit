@@ -1,0 +1,11 @@
+
+space platon.lsp.client
+
+form LspClient {
+    id : string
+}
+
+proc initialize() {}
+proc shutdown() {}
+proc send_request(method : string) {}
+proc send_notification(method : string) {}

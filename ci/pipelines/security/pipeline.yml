@@ -1,0 +1,6 @@
+
+name: Security Pipeline
+stages:
+  - dependency_scan
+  - static_analysis
+  - secrets_scan

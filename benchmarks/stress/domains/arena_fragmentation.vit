@@ -1,0 +1,5 @@
+space platon.bench.stress.domains
+
+proc run() {
+    # stress scenario: arena_fragmentation
+}

@@ -1,0 +1,2 @@
+# ansible semantic module
+proc semantic_entry() { }

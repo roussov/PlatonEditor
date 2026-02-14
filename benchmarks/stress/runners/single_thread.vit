@@ -1,0 +1,5 @@
+space platon.bench.stress.runners
+
+proc run() {
+    # single-thread stress baseline
+}

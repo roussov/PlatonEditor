@@ -1,0 +1,7 @@
+space platon.languages.bash
+
+form BashConfig {
+    tier : string
+}
+
+proc register() {}

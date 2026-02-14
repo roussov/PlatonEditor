@@ -1,0 +1,2 @@
+# dart lexer module
+proc lexer_entry() { }

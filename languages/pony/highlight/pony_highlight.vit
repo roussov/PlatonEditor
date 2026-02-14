@@ -1,0 +1,2 @@
+# pony highlight module
+proc highlight_entry() { }

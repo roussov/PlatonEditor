@@ -1,0 +1,8 @@
+{
+  "h": "cursor_left",
+  "j": "cursor_down",
+  "k": "cursor_up",
+  "l": "cursor_right",
+  "i": "enter_insert",
+  ":": "command_palette"
+}

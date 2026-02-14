@@ -1,0 +1,5 @@
+space platon.bench.multi_thread.runners
+
+proc run() {
+    # baseline single-thread
+}

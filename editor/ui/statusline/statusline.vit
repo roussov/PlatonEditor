@@ -1,0 +1,10 @@
+
+space platon.editor.ui.statusline
+
+form StatusSegment {
+    id : string
+    content : string
+}
+
+proc register(seg : StatusSegment) {}
+proc render() {}

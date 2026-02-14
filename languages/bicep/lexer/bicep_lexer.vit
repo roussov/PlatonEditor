@@ -1,0 +1,2 @@
+# bicep lexer module
+proc lexer_entry() { }

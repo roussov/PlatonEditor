@@ -1,0 +1,10 @@
+
+space platon.editor.ui.command_palette
+
+form Command {
+    id : string
+    title : string
+}
+
+proc register(cmd : Command) {}
+proc open() {}

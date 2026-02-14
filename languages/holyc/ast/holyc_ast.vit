@@ -1,0 +1,5 @@
+space platon.languages.holyc.ast
+
+form AstNode {
+    kind : string
+}

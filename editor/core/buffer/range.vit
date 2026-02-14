@@ -1,0 +1,6 @@
+space platon.editor.core.buffer
+
+form Range {
+    start : int
+    end : int
+}

@@ -1,0 +1,7 @@
+space platon.languages.purescript
+
+form PurescriptConfig {
+    category : string
+}
+
+proc register() {}

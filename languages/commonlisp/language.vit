@@ -1,0 +1,7 @@
+space platon.languages.commonlisp
+
+form CommonlispConfig {
+    category : string
+}
+
+proc register() {}

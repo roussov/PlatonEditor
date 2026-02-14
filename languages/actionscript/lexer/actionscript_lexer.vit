@@ -1,0 +1,2 @@
+# actionscript lexer module
+proc lexer_entry() { }

@@ -1,0 +1,7 @@
+space platon.languages.rescript
+
+form RescriptConfig {
+    category : string
+}
+
+proc register() {}

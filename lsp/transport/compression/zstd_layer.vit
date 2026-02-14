@@ -1,0 +1,5 @@
+
+space platon.lsp.transport.compression
+
+proc compress(msg : string) {}
+proc decompress(data : string) {}

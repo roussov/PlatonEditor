@@ -1,0 +1,2 @@
+# smalltalk lexer module
+proc lexer_entry() { }

@@ -1,0 +1,2 @@
+# gml ast module
+proc ast_entry() { }

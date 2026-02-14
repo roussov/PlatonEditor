@@ -1,0 +1,10 @@
+
+space platon.lsp.servers
+
+form LspServer {
+    name : string
+}
+
+proc start() {}
+proc stop() {}
+proc handle_request(method : string) {}

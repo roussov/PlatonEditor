@@ -1,0 +1,2 @@
+# delphi lexer module
+proc lexer_entry() { }

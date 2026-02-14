@@ -1,0 +1,2 @@
+# zig highlight module
+proc highlight_entry() { }

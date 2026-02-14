@@ -1,0 +1,4 @@
+
+space platon.lsp.jsonrpc.error
+
+proc handle_error(code : int) {}

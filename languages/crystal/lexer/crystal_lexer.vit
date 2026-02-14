@@ -1,0 +1,2 @@
+# crystal lexer module
+proc lexer_entry() { }

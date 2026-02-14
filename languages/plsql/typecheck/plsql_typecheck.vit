@@ -1,0 +1,2 @@
+# plsql typecheck module
+proc typecheck_entry() { }

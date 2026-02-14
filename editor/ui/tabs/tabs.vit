@@ -1,0 +1,12 @@
+
+space platon.editor.ui.tabs
+
+form Tab {
+    id : string
+    title : string
+    dirty : bool
+}
+
+proc open(id : string) {}
+proc close(id : string) {}
+proc focus(id : string) {}

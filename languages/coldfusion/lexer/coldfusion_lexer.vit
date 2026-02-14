@@ -1,0 +1,2 @@
+# coldfusion lexer module
+proc lexer_entry() { }

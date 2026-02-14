@@ -1,0 +1,2 @@
+# chapel formatter module
+proc formatter_entry() { }

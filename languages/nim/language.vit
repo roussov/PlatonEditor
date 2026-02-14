@@ -1,0 +1,7 @@
+space platon.languages.nim
+
+form NimConfig {
+    tier : string
+}
+
+proc register() {}

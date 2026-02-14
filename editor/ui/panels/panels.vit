@@ -1,0 +1,11 @@
+
+space platon.editor.ui.panels
+
+form Panel {
+    id : string
+    visible : bool
+}
+
+proc register(id : string) {}
+proc show(id : string) {}
+proc hide(id : string) {}

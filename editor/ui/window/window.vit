@@ -1,0 +1,14 @@
+
+space platon.editor.ui.window
+
+form Window {
+    id : string
+    width : int
+    height : int
+    focused : bool
+}
+
+proc create(width : int, height : int) -> Window {}
+proc show(w : Window) {}
+proc close(w : Window) {}
+proc resize(w : Window, width : int, height : int) {}

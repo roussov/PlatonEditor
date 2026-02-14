@@ -1,0 +1,204 @@
+space platon.editor.config.theme.engine.runtime_switch
+
+<<< Runtime Theme Switch Engine ULTRA MAX++ >>>
+<<< Hot swap, incremental diff, listeners, cache layers, atomic switch >>>
+
+form ThemeRuntimeState {
+    version : int
+    current_theme : string
+    switching : bool
+    listeners_count : int
+    invalidated_regions : int
+}
+
+form ThemeSwitchResult {
+    success : bool
+    previous_theme : string
+    new_theme : string
+}
+
+const MAX_LISTENERS : int = 512
+
+let runtime = ThemeRuntimeState {
+    version: 1,
+    current_theme: "dark",
+    switching: false,
+    listeners_count: 0,
+    invalidated_regions: 0
+}
+
+<<< Register theme listener >>>
+
+proc register_listener() {
+
+    if runtime.listeners_count >= MAX_LISTENERS {
+        panic()
+    }
+
+    set runtime.listeners_count =
+        runtime.listeners_count + 1
+}
+
+<<< Notify listeners stub >>>
+
+proc notify_listeners() {
+
+    let i = 0
+
+    loop {
+        if i >= runtime.listeners_count {
+            break
+        }
+
+        <<< Real engine would dispatch event to component >>>
+
+        set i = i + 1
+    }
+}
+
+<<< Invalidate UI regions stub >>>
+
+proc invalidate_regions(region_count : int) {
+
+    set runtime.invalidated_regions =
+        runtime.invalidated_regions + region_count
+}
+
+<<< Compute incremental diff stub >>>
+
+proc compute_theme_diff(old_theme : string, new_theme : string) -> int {
+
+    <<< Real engine would diff token palette and styles >>>
+
+    if old_theme == new_theme {
+        return 0
+    }
+
+    return 100
+}
+
+<<< Atomic runtime switch >>>
+
+proc switch_theme_runtime(new_theme : string) -> ThemeSwitchResult {
+
+    if runtime.switching {
+        return ThemeSwitchResult {
+            success: false,
+            previous_theme: runtime.current_theme,
+            new_theme: new_theme
+        }
+    }
+
+    let previous = runtime.current_theme
+
+    if previous == new_theme {
+        return ThemeSwitchResult {
+            success: true,
+            previous_theme: previous,
+            new_theme: previous
+        }
+    }
+
+    set runtime.switching = true
+
+    let diff_regions = compute_theme_diff(previous, new_theme)
+
+    invalidate_regions(diff_regions)
+
+    set runtime.current_theme = new_theme
+    set runtime.version = runtime.version + 1
+
+    notify_listeners()
+
+    set runtime.switching = false
+
+    return ThemeSwitchResult {
+        success: true,
+        previous_theme: previous,
+        new_theme: new_theme
+    }
+}
+
+<<< Force theme for testing >>>
+
+proc force_theme(theme_name : string) {
+
+    set runtime.current_theme = theme_name
+    set runtime.version = runtime.version + 1
+}
+
+<<< Current theme version >>>
+
+proc current_theme_version() -> int {
+    return runtime.version
+}
+
+<<< Stress hot swap >>>
+
+proc stress_hot_swap(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        if i % 2 == 0 {
+            switch_theme_runtime("light")
+        } else {
+            switch_theme_runtime("dark")
+        }
+
+        set i = i + 1
+    }
+}
+
+<<< Stress listener propagation >>>
+
+proc stress_listener_notify(iterations : int) {
+
+    register_listener()
+    register_listener()
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        switch_theme_runtime("light")
+        switch_theme_runtime("dark")
+
+        set i = i + 1
+    }
+}
+
+<<< Massive diff simulation >>>
+
+proc stress_massive_diff(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        invalidate_regions(100000)
+
+        set i = i + 1
+    }
+}
+
+<<< Full runtime switch suite >>>
+
+proc run_runtime_switch_ultra() {
+
+    switch_theme_runtime("light")
+    switch_theme_runtime("dark")
+    stress_hot_swap(500)
+    stress_listener_notify(200)
+    stress_massive_diff(50)
+}

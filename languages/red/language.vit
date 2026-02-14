@@ -1,0 +1,7 @@
+space platon.languages.red
+
+form RedConfig {
+    category : string
+}
+
+proc register() {}

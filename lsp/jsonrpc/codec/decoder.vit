@@ -1,0 +1,4 @@
+
+space platon.lsp.jsonrpc.codec
+
+proc decode_message(raw : string) {}

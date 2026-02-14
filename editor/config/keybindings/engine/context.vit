@@ -1,0 +1,103 @@
+space platon.editor.config.keybindings.engine.context
+
+# Keybinding Context Engine# Handles mode, focus, editor state and conditional activation
+form Context {
+    mode : string
+    has_selection : bool
+    is_readonly : bool
+    in_terminal : bool
+    in_search : bool
+}
+
+form Condition {
+    require_mode : string
+    require_selection : bool
+    require_writable : bool
+    require_terminal : bool
+}
+
+# Default context builder
+proc default_context() -> Context {
+    return Context {
+        mode: "normal",
+        has_selection: false,
+        is_readonly: false,
+        in_terminal: false,
+        in_search: false
+    }
+}
+
+# Context evaluation
+proc matches_condition(
+    ctx : Context,
+    cond : Condition
+) -> bool {
+
+    if cond.require_mode != "" and ctx.mode != cond.require_mode {
+        return false
+    }
+
+    if cond.require_selection and not ctx.has_selection {
+        return false
+    }
+
+    if cond.require_writable and ctx.is_readonly {
+        return false
+    }
+
+    if cond.require_terminal and not ctx.in_terminal {
+        return false
+    }
+
+    return true
+}
+
+# Mode switching
+proc set_mode(ctx : Context, new_mode : string) {
+    ctx.mode = new_mode
+}
+
+# Selection updates
+proc set_selection(ctx : Context, value : bool) {
+    ctx.has_selection = value
+}
+
+# Readonly state
+proc set_readonly(ctx : Context, value : bool) {
+    ctx.is_readonly = value
+}
+
+# Terminal focus state
+proc set_terminal(ctx : Context, value : bool) {
+    ctx.in_terminal = value
+}
+
+# Search state
+proc set_search(ctx : Context, value : bool) {
+    ctx.in_search = value
+}
+
+# Stress test context matching
+proc stress_context(iterations : int) {
+
+    let ctx = default_context()
+
+    let cond = Condition {
+        require_mode: "normal",
+        require_selection: false,
+        require_writable: false,
+        require_terminal: false
+    }
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        matches_condition(ctx, cond)
+
+        set i = i + 1
+    }
+}

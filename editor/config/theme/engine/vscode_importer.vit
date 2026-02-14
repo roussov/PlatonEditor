@@ -1,0 +1,190 @@
+space platon.editor.config.theme.engine.vscode_importer
+
+<<< VSCode Theme Importer ULTRA MAX+++ >>>
+<<< JSON parsing stub, semantic token mapping, color normalization, validation, stats >>>
+
+form ImportStats {
+    tokens_imported : int
+    colors_parsed : int
+    errors : int
+}
+
+form VSCodeThemeRaw {
+    name : string
+    version : int
+}
+
+form ImportResult {
+    success : bool
+    stats : ImportStats
+}
+
+form ImportState {
+    last_imported_theme : string
+    total_imports : int
+    last_error_count : int
+}
+
+let importer = ImportState {
+    last_imported_theme: "",
+    total_imports: 0,
+    last_error_count: 0
+}
+
+<<< Parse JSON stub >>>
+
+proc parse_json(raw : string) -> VSCodeThemeRaw {
+
+    <<< Real engine would parse JSON AST >>>
+
+    if raw == "" {
+        return VSCodeThemeRaw { name: "", version: 0 }
+    }
+
+    return VSCodeThemeRaw { name: "vscode_theme", version: 1 }
+}
+
+<<< Normalize hex color stub >>>
+
+proc normalize_color(hex : string) -> string {
+
+    <<< Real engine would validate #RRGGBB and convert >>>
+
+    return hex
+}
+
+<<< Map VSCode token to Platon token stub >>>
+
+proc map_token(vscode_token : string) -> string {
+
+    <<< Real engine would use mapping table >>>
+
+    return vscode_token
+}
+
+<<< Validate theme structure stub >>>
+
+proc validate_theme(raw : VSCodeThemeRaw) -> bool {
+
+    if raw.name == "" {
+        return false
+    }
+
+    return true
+}
+
+<<< Import VSCode theme >>>
+
+proc import_vscode_theme(raw_json : string) -> ImportResult {
+
+    let stats = ImportStats {
+        tokens_imported: 0,
+        colors_parsed: 0,
+        errors: 0
+    }
+
+    let parsed = parse_json(raw_json)
+
+    if not validate_theme(parsed) {
+
+        set stats.errors = stats.errors + 1
+
+        return ImportResult {
+            success: false,
+            stats: stats
+        }
+    }
+
+    <<< Simulated token import loop >>>
+
+    let i = 0
+
+    loop {
+        if i >= 100 {
+            break
+        }
+
+        let token = map_token("keyword")
+        normalize_color("#ffffff")
+
+        set stats.tokens_imported =
+            stats.tokens_imported + 1
+
+        set stats.colors_parsed =
+            stats.colors_parsed + 1
+
+        set i = i + 1
+    }
+
+    set importer.last_imported_theme = parsed.name
+    set importer.total_imports =
+        importer.total_imports + 1
+    set importer.last_error_count = stats.errors
+
+    return ImportResult {
+        success: true,
+        stats: stats
+    }
+}
+
+<<< Batch import benchmark >>>
+
+proc stress_import(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        import_vscode_theme("{ theme: dummy }")
+
+        set i = i + 1
+    }
+}
+
+<<< Massive theme stress >>>
+
+proc stress_massive_theme(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        import_vscode_theme("{ large theme }")
+
+        set i = i + 1
+    }
+}
+
+<<< Reset importer state >>>
+
+proc reset_importer() {
+
+    set importer.last_imported_theme = ""
+    set importer.total_imports = 0
+    set importer.last_error_count = 0
+}
+
+<<< Import statistics accessors >>>
+
+proc total_import_count() -> int {
+    return importer.total_imports
+}
+
+proc last_import_errors() -> int {
+    return importer.last_error_count
+}
+
+<<< Full enterprise import suite >>>
+
+proc run_vscode_importer_ultra() {
+
+    import_vscode_theme("{ valid theme }")
+    stress_import(500)
+    stress_massive_theme(200)
+}

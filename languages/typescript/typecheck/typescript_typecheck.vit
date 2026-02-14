@@ -1,0 +1,2 @@
+# typescript typecheck module
+proc typecheck_entry() { }

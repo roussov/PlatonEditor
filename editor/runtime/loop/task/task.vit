@@ -1,0 +1,9 @@
+space platon.editor.runtime.loop.task
+
+form Task {
+    id : int
+    ready : bool
+}
+
+proc schedule(t : Task) {}
+proc execute(t : Task) {}

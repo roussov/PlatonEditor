@@ -1,0 +1,7 @@
+space platon.languages.scheme
+
+form SchemeConfig {
+    category : string
+}
+
+proc register() {}

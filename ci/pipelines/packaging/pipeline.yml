@@ -1,0 +1,7 @@
+
+name: Packaging Pipeline
+stages:
+  - linux_packages
+  - macos_packages
+  - windows_packages
+  - docker_images

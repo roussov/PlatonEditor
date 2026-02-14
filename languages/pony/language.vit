@@ -1,0 +1,7 @@
+space platon.languages.pony
+
+form PonyConfig {
+    category : string
+}
+
+proc register() {}

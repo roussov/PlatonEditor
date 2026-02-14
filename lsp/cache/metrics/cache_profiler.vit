@@ -1,0 +1,5 @@
+
+space platon.lsp.cache.metrics
+
+proc profile_start() {}
+proc profile_end() {}

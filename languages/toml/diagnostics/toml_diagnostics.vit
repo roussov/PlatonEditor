@@ -1,0 +1,2 @@
+# toml diagnostics module
+proc diagnostics_entry() { }

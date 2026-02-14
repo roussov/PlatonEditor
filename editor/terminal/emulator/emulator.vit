@@ -1,0 +1,13 @@
+
+space platon.editor.terminal.emulator
+
+form Emulator {
+    cols : int
+    rows : int
+}
+
+proc init(cols : int, rows : int) -> Emulator {
+    give Emulator { cols: cols, rows: rows }
+}
+
+proc feed(e : Emulator, data : string) {}

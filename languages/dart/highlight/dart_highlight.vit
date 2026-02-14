@@ -1,0 +1,2 @@
+# dart highlight module
+proc highlight_entry() { }

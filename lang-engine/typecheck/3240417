@@ -1,0 +1,17 @@
+# PlatonEditor Language Engine Typecheck — ULTRA MAX MAX
+
+Compiler-grade type checking subsystem:
+
+- Bidirectional type checking
+- Hindley-Milner style inference core
+- Constraint graph solver
+- Trait/interface resolution
+- Generic specialization engine
+- Overload resolution
+- Subtyping + variance rules
+- Lifetime/region analysis hooks
+- Cross-file type linking
+- Incremental type invalidation
+- Snapshot-consistent type state
+- Deterministic checking mode
+- Metrics + profiler integration

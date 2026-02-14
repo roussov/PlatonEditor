@@ -1,0 +1,10 @@
+
+space platon.editor.ui.explorer
+
+form ExplorerNode {
+    path : string
+    is_dir : bool
+}
+
+proc open_root(path : string) {}
+proc refresh(path : string) {}

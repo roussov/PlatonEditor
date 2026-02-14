@@ -1,0 +1,7 @@
+space platon.editor.core.history.dag
+
+proc add_node(parent : int) -> int {
+    give 0
+}
+
+proc branch(node : int) {}

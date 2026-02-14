@@ -1,0 +1,14 @@
+space platon.editor.core.transaction
+
+form Transaction {
+    id : int
+    parent : int
+    active : bool
+}
+
+proc begin() -> Transaction {
+    give Transaction { id: 0, parent: 0, active: true }
+}
+
+proc commit(t : Transaction) {}
+proc rollback(t : Transaction) {}

@@ -1,0 +1,9 @@
+
+space platon.editor.lang_engine.typecheck
+
+form TypeCheckResult {
+    success : bool
+}
+
+proc check() {}
+proc recheck_incremental() {}

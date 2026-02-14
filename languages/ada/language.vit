@@ -1,0 +1,7 @@
+space platon.languages.ada
+
+form AdaConfig {
+    category : string
+}
+
+proc register() {}

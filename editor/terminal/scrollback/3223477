@@ -1,0 +1,15 @@
+# PlatonEditor Terminal Scrollback — ULTRA MAX MAX
+
+High-performance scrollback engine:
+
+- Lock-free scrollback ring
+- Segmented line storage (slab-backed)
+- Zero-copy line reuse
+- 8GB+ streaming scrollback
+- Compression-ready segments
+- Snapshot-consistent capture
+- Incremental pruning strategy
+- Memory pressure adaptive trimming
+- Fast search inside scrollback (SIMD bridge)
+- Multi-session scrollback isolation
+- Metrics + profiler integration

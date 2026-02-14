@@ -1,0 +1,7 @@
+space platon.languages.vala
+
+form ValaConfig {
+    category : string
+}
+
+proc register() {}

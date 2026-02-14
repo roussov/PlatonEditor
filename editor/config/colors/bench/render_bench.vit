@@ -1,0 +1,138 @@
+space platon.editor.config.colors.bench
+
+# ------------------------------------------------------------
+# Color + Cell model
+# ------------------------------------------------------------
+
+form Color {
+    r : int
+    g : int
+    b : int
+}
+
+form Cell {
+    fg : Color
+    bg : Color
+    bold : bool
+}
+
+form FrameBuffer {
+    width  : int
+    height : int
+}
+
+# ------------------------------------------------------------
+# Fake render cost (simulate terminal color packing)
+# ------------------------------------------------------------
+
+proc pack_color(c : Color) -> int {
+    # 24-bit RGB packing
+    return (c.r << 16) | (c.g << 8) | c.b
+}
+
+proc render_cell(cell : Cell) -> int {
+    let fg = pack_color(cell.fg)
+    let bg = pack_color(cell.bg)
+
+    if cell.bold {
+        return fg ^ bg
+    } else {
+        return fg | bg
+    }
+}
+
+# ------------------------------------------------------------
+# Bench: single line render
+# ------------------------------------------------------------
+
+proc bench_render_line() {
+    let i = 0
+
+    loop {
+        if i >= 200 {
+            break
+        }
+
+        render_cell(
+            Cell {
+                fg: Color { r: 220, g: 220, b: 220 },
+                bg: Color { r: 30, g: 30, b: 30 },
+                bold: false
+            }
+        )
+
+        set i = i + 1
+    }
+}
+
+# ------------------------------------------------------------
+# Bench: full screen render (80x24)
+# ------------------------------------------------------------
+
+proc bench_render_screen_80x24() {
+    let x = 0
+
+    loop {
+        if x >= 80 * 24 {
+            break
+        }
+
+        render_cell(
+            Cell {
+                fg: Color { r: x % 255, g: (x * 2) % 255, b: (x * 3) % 255 },
+                bg: Color { r: 15, g: 15, b: 18 },
+                bold: (x % 2) == 0
+            }
+        )
+
+        set x = x + 1
+    }
+}
+
+# ------------------------------------------------------------
+# Bench: large viewport (200x60)
+# ------------------------------------------------------------
+
+proc bench_render_large_viewport() {
+    let x = 0
+
+    loop {
+        if x >= 200 * 60 {
+            break
+        }
+
+        render_cell(
+            Cell {
+                fg: Color { r: (x * 3) % 255, g: (x * 5) % 255, b: (x * 7) % 255 },
+                bg: Color { r: 20, g: 22, b: 26 },
+                bold: (x % 3) == 0
+            }
+        )
+
+        set x = x + 1
+    }
+}
+
+# ------------------------------------------------------------
+# Bench: stress 1M cells
+# ------------------------------------------------------------
+
+proc bench_render_stress_1m() {
+    let i = 0
+
+    loop {
+        if i >= 1000000 {
+            break
+        }
+
+        render_cell(
+            Cell {
+                fg: Color { r: i % 255, g: (i * 2) % 255, b: (i * 4) % 255 },
+                bg: Color { r: (i * 3) % 255, g: (i * 5) % 255, b: (i * 6) % 255 },
+                bold: (i % 5) == 0
+            }
+        )
+
+        set i = i + 1
+    }
+}

@@ -1,0 +1,178 @@
+space platon.editor.config.theme.bench.render_bench
+
+<<< Theme Render Benchmark Engine ULTRA MAX++ >>>
+<<< Measures render cost, token throughput, frame stability, stress loops >>>
+
+form RenderMetrics {
+    frames_rendered : int
+    tokens_processed : int
+    total_time_units : int
+    max_frame_cost : int
+}
+
+form RenderState {
+    version : int
+    last_frame_cost : int
+}
+
+let render_state = RenderState {
+    version: 1,
+    last_frame_cost: 0
+}
+
+<<< Simulated render cost computation >>>
+
+proc compute_render_cost(tokens : int) -> int {
+
+    <<< Simulated complexity O(n) >>>
+
+    let cost = 0
+    let i = 0
+
+    loop {
+        if i >= tokens {
+            break
+        }
+
+        set cost = cost + 1
+        set i = i + 1
+    }
+
+    return cost
+}
+
+<<< Render frame simulation >>>
+
+proc render_frame(tokens : int) -> int {
+
+    let cost = compute_render_cost(tokens)
+
+    set render_state.last_frame_cost = cost
+
+    return cost
+}
+
+<<< Benchmark single pass >>>
+
+proc bench_single_pass(tokens : int) -> RenderMetrics {
+
+    let cost = render_frame(tokens)
+
+    return RenderMetrics {
+        frames_rendered: 1,
+        tokens_processed: tokens,
+        total_time_units: cost,
+        max_frame_cost: cost
+    }
+}
+
+<<< Benchmark multi-frame sequence >>>
+
+proc bench_multi_frame(
+    frames : int,
+    tokens_per_frame : int
+) -> RenderMetrics {
+
+    let i = 0
+    let total_cost = 0
+    let max_cost = 0
+    let total_tokens = 0
+
+    loop {
+        if i >= frames {
+            break
+        }
+
+        let cost = render_frame(tokens_per_frame)
+
+        set total_cost = total_cost + cost
+        set total_tokens = total_tokens + tokens_per_frame
+
+        if cost > max_cost {
+            set max_cost = cost
+        }
+
+        set i = i + 1
+    }
+
+    return RenderMetrics {
+        frames_rendered: frames,
+        tokens_processed: total_tokens,
+        total_time_units: total_cost,
+        max_frame_cost: max_cost
+    }
+}
+
+<<< Stress benchmark heavy tokens >>>
+
+proc stress_heavy_tokens(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        bench_single_pass(100000)
+
+        set i = i + 1
+    }
+}
+
+<<< Stress high FPS simulation >>>
+
+proc stress_high_fps(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        bench_multi_frame(60, 2000)
+
+        set i = i + 1
+    }
+}
+
+<<< Worst case token explosion >>>
+
+proc stress_token_explosion(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        bench_multi_frame(10, 250000)
+
+        set i = i + 1
+    }
+}
+
+<<< Snapshot render version >>>
+
+proc current_render_version() -> int {
+    return render_state.version
+}
+
+<<< Increment render version after theme change >>>
+
+proc bump_render_version() {
+    set render_state.version = render_state.version + 1
+}
+
+<<< Full benchmark suite >>>
+
+proc run_theme_render_bench_ultra() {
+
+    bench_single_pass(5000)
+    bench_multi_frame(120, 1500)
+    stress_heavy_tokens(100)
+    stress_high_fps(200)
+    stress_token_explosion(50)
+}

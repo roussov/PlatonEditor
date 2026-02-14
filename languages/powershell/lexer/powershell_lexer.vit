@@ -1,0 +1,2 @@
+# powershell lexer module
+proc lexer_entry() { }

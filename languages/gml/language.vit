@@ -1,0 +1,7 @@
+space platon.languages.gml
+
+form GmlConfig {
+    tier : string
+}
+
+proc register() {}

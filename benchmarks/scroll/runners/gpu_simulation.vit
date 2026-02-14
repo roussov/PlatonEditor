@@ -1,0 +1,5 @@
+space platon.bench.scroll.runners
+
+proc run() {
+    # simulated GPU-accelerated scroll
+}

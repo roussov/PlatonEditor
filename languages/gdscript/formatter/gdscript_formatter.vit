@@ -1,0 +1,2 @@
+# gdscript formatter module
+proc formatter_entry() { }

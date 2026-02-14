@@ -1,0 +1,5 @@
+
+space platon.lsp.jsonrpc.runtime
+
+proc enqueue(msg : string) {}
+proc dequeue() {}

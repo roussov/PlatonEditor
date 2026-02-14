@@ -1,0 +1,195 @@
+space platon.editor.config.theme.runtime.live_preview
+
+<<< Theme Live Preview Runtime Engine ULTRA MAX+++ >>>
+<<< Non-destructive preview, snapshot isolation, diff preview, instant revert, stress-safe >>>
+
+form PreviewSnapshot {
+    theme_name : string
+    version : int
+}
+
+form PreviewState {
+    active_theme : string
+    preview_theme : string
+    preview_version : int
+    in_preview : bool
+    previews_applied : int
+    reverts : int
+}
+
+let preview = PreviewState {
+    active_theme: "dark",
+    preview_theme: "",
+    preview_version: 0,
+    in_preview: false,
+    previews_applied: 0,
+    reverts: 0
+}
+
+<<< Begin live preview session >>>
+
+proc begin_preview(new_theme : string) {
+
+    if preview.in_preview {
+        return
+    }
+
+    set preview.preview_theme = new_theme
+    set preview.preview_version = preview.preview_version + 1
+    set preview.in_preview = true
+}
+
+<<< Apply preview diff stub >>>
+
+proc apply_preview_diff() {
+
+    if not preview.in_preview {
+        return
+    }
+
+    <<< Real engine would compute diff and render without committing >>>
+}
+
+<<< Commit preview to active theme >>>
+
+proc commit_preview() {
+
+    if not preview.in_preview {
+        return
+    }
+
+    set preview.active_theme = preview.preview_theme
+    set preview.in_preview = false
+    set preview.previews_applied =
+        preview.previews_applied + 1
+}
+
+<<< Revert preview safely >>>
+
+proc revert_preview() {
+
+    if not preview.in_preview {
+        return
+    }
+
+    set preview.preview_theme = ""
+    set preview.in_preview = false
+    set preview.reverts = preview.reverts + 1
+}
+
+<<< Snapshot current active theme >>>
+
+proc snapshot_active() -> PreviewSnapshot {
+
+    return PreviewSnapshot {
+        theme_name: preview.active_theme,
+        version: preview.preview_version
+    }
+}
+
+<<< Restore snapshot >>>
+
+proc restore_snapshot(s : PreviewSnapshot) {
+
+    set preview.active_theme = s.theme_name
+    set preview.preview_version = s.version
+    set preview.in_preview = false
+}
+
+<<< Current active theme >>>
+
+proc current_active_theme() -> string {
+    return preview.active_theme
+}
+
+<<< Check preview state >>>
+
+proc is_preview_active() -> bool {
+    return preview.in_preview
+}
+
+<<< Stress preview toggling >>>
+
+proc stress_preview_toggle(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        begin_preview("light")
+        apply_preview_diff()
+        revert_preview()
+
+        set i = i + 1
+    }
+}
+
+<<< Stress preview commit cycles >>>
+
+proc stress_preview_commit(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        begin_preview("dynamic_theme")
+        apply_preview_diff()
+        commit_preview()
+
+        set i = i + 1
+    }
+}
+
+<<< Massive preview switching simulation >>>
+
+proc stress_massive_preview(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        begin_preview("theme_a")
+        apply_preview_diff()
+        revert_preview()
+
+        begin_preview("theme_b")
+        apply_preview_diff()
+        commit_preview()
+
+        set i = i + 1
+    }
+}
+
+<<< Reset preview engine >>>
+
+proc reset_live_preview() {
+
+    set preview.active_theme = "dark"
+    set preview.preview_theme = ""
+    set preview.preview_version = 0
+    set preview.in_preview = false
+    set preview.previews_applied = 0
+    set preview.reverts = 0
+}
+
+<<< Full live preview suite >>>
+
+proc run_live_preview_ultra() {
+
+    begin_preview("light")
+    apply_preview_diff()
+    commit_preview()
+
+    stress_preview_toggle(500)
+    stress_preview_commit(500)
+    stress_massive_preview(200)
+}

@@ -1,0 +1,7 @@
+space platon.languages.gleam
+
+form GleamConfig {
+    category : string
+}
+
+proc register() {}

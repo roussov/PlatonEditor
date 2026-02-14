@@ -1,0 +1,4 @@
+space platon.editor.core.history
+
+proc begin_batch() {}
+proc end_batch() {}

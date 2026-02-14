@@ -1,0 +1,7 @@
+space platon.languages.julia
+
+form JuliaConfig {
+    tier : string
+}
+
+proc register() {}

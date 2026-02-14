@@ -1,0 +1,2 @@
+# erlang lsp module
+proc lsp_entry() { }

@@ -1,0 +1,2 @@
+# ansible lsp module
+proc lsp_entry() { }

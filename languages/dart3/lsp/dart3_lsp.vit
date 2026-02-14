@@ -1,0 +1,2 @@
+# dart3 lsp module
+proc lsp_entry() { }

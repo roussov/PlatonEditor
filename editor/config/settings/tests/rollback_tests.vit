@@ -1,0 +1,195 @@
+space platon.editor.config.settings.tests.rollback
+
+<<< Rollback & Transaction ULTRA MAX++ Test Suite >>>
+<<< Covers transaction start, rollback integrity, multi-step revert, stress safety >>>
+
+form SemVersion {
+    major : int
+    minor : int
+    patch : int
+}
+
+proc assert_true(cond : bool) {
+    if not cond {
+        panic()
+    }
+}
+
+proc assert_false(cond : bool) {
+    if cond {
+        panic()
+    }
+}
+
+proc assert_eq_int(a : int, b : int) {
+    if a != b {
+        panic()
+    }
+}
+
+proc assert_version_equal(a : SemVersion, b : SemVersion) {
+    assert_eq_int(a.major, b.major)
+    assert_eq_int(a.minor, b.minor)
+    assert_eq_int(a.patch, b.patch)
+}
+
+<<< Basic rollback integrity test >>>
+
+proc test_basic_rollback() {
+
+    force_version(1, 0, 0)
+
+    let original = current_version()
+
+    rollback_migration(original)
+
+    let after = current_version()
+
+    assert_version_equal(after, original)
+}
+
+<<< Rollback after migration attempt >>>
+
+proc test_rollback_after_migration() {
+
+    force_version(1, 0, 0)
+
+    let original = current_version()
+
+    migrate_to(
+        SemVersion { major: 2, minor: 0, patch: 0 }
+    )
+
+    rollback_migration(original)
+
+    let after = current_version()
+
+    assert_version_equal(after, original)
+}
+
+<<< Multi-step rollback safety >>>
+
+proc test_multi_step_rollback() {
+
+    force_version(1, 0, 0)
+
+    let original = current_version()
+
+    migrate_to(
+        SemVersion { major: 2, minor: 0, patch: 0 }
+    )
+
+    migrate_to(
+        SemVersion { major: 3, minor: 0, patch: 0 }
+    )
+
+    rollback_migration(original)
+
+    let after = current_version()
+
+    assert_version_equal(after, original)
+}
+
+<<< Idempotent rollback test >>>
+
+proc test_idempotent_rollback() {
+
+    force_version(1, 0, 0)
+
+    let original = current_version()
+
+    rollback_migration(original)
+    rollback_migration(original)
+
+    let after = current_version()
+
+    assert_version_equal(after, original)
+}
+
+<<< Stress rollback under load >>>
+
+proc test_stress_rollback() {
+
+    let i = 0
+
+    loop {
+        if i >= 20000 {
+            break
+        }
+
+        force_version(1, 0, 0)
+
+        let original = current_version()
+
+        migrate_to(
+            SemVersion { major: 2, minor: 0, patch: 0 }
+        )
+
+        rollback_migration(original)
+
+        assert_version_equal(current_version(), original)
+
+        set i = i + 1
+    }
+
+    assert_true(true)
+}
+
+<<< Transaction begin + rollback simulation >>>
+
+proc test_transaction_simulation() {
+
+    force_version(1, 0, 0)
+
+    let original = current_version()
+
+    begin_migration()
+
+    migrate_to(
+        SemVersion { major: 4, minor: 0, patch: 0 }
+    )
+
+    rollback_migration(original)
+
+    assert_version_equal(current_version(), original)
+}
+
+<<< Heavy nested rollback stress >>>
+
+proc test_nested_rollback_stress() {
+
+    let i = 0
+
+    loop {
+        if i >= 10000 {
+            break
+        }
+
+        force_version(1, 0, 0)
+
+        let original = current_version()
+
+        migrate_to(
+            SemVersion { major: 5, minor: i, patch: 0 }
+        )
+
+        rollback_migration(original)
+
+        set i = i + 1
+    }
+
+    assert_true(true)
+}
+
+<<< Master runner >>>
+
+proc run_rollback_tests_ultra() {
+
+    test_basic_rollback()
+    test_rollback_after_migration()
+    test_multi_step_rollback()
+    test_idempotent_rollback()
+    test_stress_rollback()
+    test_transaction_simulation()
+    test_nested_rollback_stress()
+}

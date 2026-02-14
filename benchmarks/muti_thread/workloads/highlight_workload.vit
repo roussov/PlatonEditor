@@ -1,0 +1,5 @@
+space platon.bench.multi_thread.workloads
+
+proc run_highlight_workload() {
+    # simulate highlight
+}

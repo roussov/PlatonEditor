@@ -1,0 +1,7 @@
+space platon.languages.roc
+
+form RocConfig {
+    category : string
+}
+
+proc register() {}

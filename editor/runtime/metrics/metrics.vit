@@ -1,0 +1,12 @@
+space platon.editor.runtime.metrics
+
+form Counter {
+    value : int
+}
+
+form Histogram {
+    buckets : int
+}
+
+proc inc(c : Counter) {}
+proc observe(h : Histogram, value : int) {}

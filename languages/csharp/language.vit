@@ -1,0 +1,7 @@
+space platon.languages.csharp
+
+form CsharpConfig {
+    tier : string
+}
+
+proc register() {}

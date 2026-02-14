@@ -1,0 +1,7 @@
+space platon.languages.swiftui
+
+form SwiftuiConfig {
+    category : string
+}
+
+proc register() {}

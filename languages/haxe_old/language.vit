@@ -1,0 +1,7 @@
+space platon.languages.haxe_old
+
+form HaxeoldConfig {
+    category : string
+}
+
+proc register() {}

@@ -1,0 +1,5 @@
+space platon.bench.startup.metrics
+
+proc generate() {
+    # generate startup benchmark report
+}

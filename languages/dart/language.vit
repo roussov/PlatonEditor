@@ -1,0 +1,7 @@
+space platon.languages.dart
+
+form DartConfig {
+    tier : string
+}
+
+proc register() {}

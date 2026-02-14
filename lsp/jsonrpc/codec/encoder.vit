@@ -1,0 +1,6 @@
+
+space platon.lsp.jsonrpc.codec
+
+proc encode_request(id : int, method : string, params : string) {}
+proc encode_response(id : int, result : string) {}
+proc encode_error(id : int, code : int, message : string) {}

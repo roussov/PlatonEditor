@@ -1,0 +1,2 @@
+# javascript ast module
+proc ast_entry() { }

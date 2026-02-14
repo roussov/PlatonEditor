@@ -1,0 +1,2 @@
+# dart3 parser module
+proc parser_entry() { }

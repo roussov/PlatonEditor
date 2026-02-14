@@ -1,0 +1,7 @@
+space platon.languages.erlang
+
+form ErlangConfig {
+    tier : string
+}
+
+proc register() {}

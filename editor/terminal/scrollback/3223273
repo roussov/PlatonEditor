@@ -1,0 +1,14 @@
+
+space platon.editor.terminal.scrollback
+
+form Scrollback {
+    capacity : int
+    size : int
+}
+
+proc init(capacity : int) -> Scrollback {
+    give Scrollback { capacity: capacity, size: 0 }
+}
+
+proc push(sb : Scrollback, line : string) {}
+proc clear(sb : Scrollback) {}

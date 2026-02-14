@@ -1,0 +1,5 @@
+
+space platon.lsp.client.capabilities
+
+proc register_capability(name : string) {}
+proc supports(name : string) {}

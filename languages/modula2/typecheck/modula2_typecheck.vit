@@ -1,0 +1,2 @@
+# modula2 typecheck module
+proc typecheck_entry() { }

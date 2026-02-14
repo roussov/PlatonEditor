@@ -1,0 +1,2 @@
+# inko lexer module
+proc lexer_entry() { }

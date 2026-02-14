@@ -1,0 +1,2 @@
+# dart3 diagnostics module
+proc diagnostics_entry() { }

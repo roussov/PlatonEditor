@@ -1,0 +1,7 @@
+space platon.languages.r
+
+form RConfig {
+    tier : string
+}
+
+proc register() {}
