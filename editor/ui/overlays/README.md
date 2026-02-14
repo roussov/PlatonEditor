@@ -1,16 +1,34 @@
-# PlatonEditor UI Overlays — ULTRA MAX
+# Overlays
 
-Advanced overlay rendering system:
+Path: editor/ui/overlays
 
-- Hover tooltips
-- Inline diagnostics (errors/warnings)
-- Code lens overlays
-- Selection highlight layers
-- Multi-cursor overlays
-- Search highlight layer
-- Peek definition panel overlay
-- Rename preview overlay
-- Notification toasts
-- Z-index compositing engine
-- Snapshot-safe overlay state
-- Metrics + profiler integration
+UI composition: widgets, layout, overlays, tabs, windows, and interaction patterns.
+
+## Who This Is For
+- Beginner: Read this first to understand ownership and boundaries.
+- Intermediate: Use this folder as your implementation scope for focused changes.
+- Professional: Validate contracts with neighboring modules before merging.
+
+## What You Will Find Here
+- Implementation files for this subsystem (Vitte sources and related assets).
+- Local tests or benchmarks where relevant.
+- Integration glue connecting this module to the wider editor platform.
+
+## Practical Workflow
+1. Identify entry files and read them end to end.
+2. Implement small, reversible changes.
+3. Run checks and tests targeted to this module.
+4. Validate behavior in upstream and downstream integrations.
+
+## Quality Checklist
+- Behavior is correct for expected and edge paths.
+- No hidden regressions in logs, diagnostics, or user-visible behavior.
+- Performance-sensitive paths are benchmarked when modified.
+
+## Notes For Contributors
+- Keep naming explicit and intent-oriented.
+- Prefer readable control flow over clever shortcuts.
+- Document non-obvious tradeoffs close to the code.
+
+## Next Step
+Keep interaction consistency across screen sizes and states.

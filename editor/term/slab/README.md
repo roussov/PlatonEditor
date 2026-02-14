@@ -1,15 +1,34 @@
-# PlatonEditor Terminal Slab — ULTRA MAX MAX
+# Slab
 
-Specialized slab allocator for terminal subsystem:
+Path: editor/term/slab
 
-- Fixed-size glyph cell slabs
-- ANSI token slab pools
-- Scrollback line slab segments
-- Per-thread slab caches
-- Lock-free fast allocation path
-- Cache-line aligned chunks
-- Fragmentation metrics
-- Arena bridge integration
-- Snapshot-safe state freezing
-- Deterministic allocation mode
-- Metrics + profiler hooks
+Terminal and TTY layers: input decoding, rendering pipeline, shell process bridge.
+
+## Who This Is For
+- Beginner: Read this first to understand ownership and boundaries.
+- Intermediate: Use this folder as your implementation scope for focused changes.
+- Professional: Validate contracts with neighboring modules before merging.
+
+## What You Will Find Here
+- Implementation files for this subsystem (Vitte sources and related assets).
+- Local tests or benchmarks where relevant.
+- Integration glue connecting this module to the wider editor platform.
+
+## Practical Workflow
+1. Identify entry files and read them end to end.
+2. Implement small, reversible changes.
+3. Run checks and tests targeted to this module.
+4. Validate behavior in upstream and downstream integrations.
+
+## Quality Checklist
+- Behavior is correct for expected and edge paths.
+- No hidden regressions in logs, diagnostics, or user-visible behavior.
+- Performance-sensitive paths are benchmarked when modified.
+
+## Notes For Contributors
+- Keep naming explicit and intent-oriented.
+- Prefer readable control flow over clever shortcuts.
+- Document non-obvious tradeoffs close to the code.
+
+## Next Step
+Verify interactive workflows, not only isolated functions.

@@ -1,19 +1,34 @@
-# PlatonEditor Debug Adapter Protocol — ULTRA MAX
+# Dap
 
-Full DAP server implementation:
+Path: editor/debug/dap
 
-- JSON-RPC 2.0 transport
-- TCP + stdio modes
-- Initialize / Launch / Attach
-- SetBreakpoints / SetFunctionBreakpoints
-- Continue / Pause / StepIn / StepOut / StepOver
-- StackTrace / Scopes / Variables
-- Evaluate / REPL
-- Threads support
-- Exception filters
-- Reverse debugging hooks
-- Time-travel integration
-- Remote debugging secure channel
-- Multi-session support
-- Async event dispatch
-- Performance instrumentation
+Debug protocol integrations (DAP, GDB, LLDB), session orchestration, and diagnostics.
+
+## Who This Is For
+- Beginner: Read this first to understand ownership and boundaries.
+- Intermediate: Use this folder as your implementation scope for focused changes.
+- Professional: Validate contracts with neighboring modules before merging.
+
+## What You Will Find Here
+- Implementation files for this subsystem (Vitte sources and related assets).
+- Local tests or benchmarks where relevant.
+- Integration glue connecting this module to the wider editor platform.
+
+## Practical Workflow
+1. Identify entry files and read them end to end.
+2. Implement small, reversible changes.
+3. Run checks and tests targeted to this module.
+4. Validate behavior in upstream and downstream integrations.
+
+## Quality Checklist
+- Behavior is correct for expected and edge paths.
+- No hidden regressions in logs, diagnostics, or user-visible behavior.
+- Performance-sensitive paths are benchmarked when modified.
+
+## Notes For Contributors
+- Keep naming explicit and intent-oriented.
+- Prefer readable control flow over clever shortcuts.
+- Document non-obvious tradeoffs close to the code.
+
+## Next Step
+Treat protocol compatibility and error handling as first-class concerns.

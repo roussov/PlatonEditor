@@ -1,19 +1,34 @@
-# PlatonEditor Runtime Metrics — ULTRA MAX
+# Metrics
 
-High-performance metrics & observability subsystem:
+Path: editor/runtime/metrics
 
-- Lock-free counters (atomic)
-- Histograms (HDR-like)
-- Latency tracking (ns precision)
-- Memory usage metrics
-- Arena allocation metrics
-- MMAP page fault metrics
-- Event loop metrics
-- Transaction commit latency
-- Snapshot/History profiling
-- Real-time dashboard hooks
-- Export: JSON / Prometheus
-- Ring-buffer time series
-- Per-thread metrics registry
-- Sampling mode (low overhead)
-- Deterministic replay tagging
+Runtime primitives: scheduler, pools, allocation, metrics, and profiler plumbing.
+
+## Who This Is For
+- Beginner: Read this first to understand ownership and boundaries.
+- Intermediate: Use this folder as your implementation scope for focused changes.
+- Professional: Validate contracts with neighboring modules before merging.
+
+## What You Will Find Here
+- Implementation files for this subsystem (Vitte sources and related assets).
+- Local tests or benchmarks where relevant.
+- Integration glue connecting this module to the wider editor platform.
+
+## Practical Workflow
+1. Identify entry files and read them end to end.
+2. Implement small, reversible changes.
+3. Run checks and tests targeted to this module.
+4. Validate behavior in upstream and downstream integrations.
+
+## Quality Checklist
+- Behavior is correct for expected and edge paths.
+- No hidden regressions in logs, diagnostics, or user-visible behavior.
+- Performance-sensitive paths are benchmarked when modified.
+
+## Notes For Contributors
+- Keep naming explicit and intent-oriented.
+- Prefer readable control flow over clever shortcuts.
+- Document non-obvious tradeoffs close to the code.
+
+## Next Step
+Measure under load to avoid hidden latency or contention regressions.

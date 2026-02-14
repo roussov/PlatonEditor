@@ -1,17 +1,34 @@
-# PlatonEditor Language Engine Symbol Table — ULTRA MAX MAX
+# Symbol Table
 
-Compiler-grade symbol table infrastructure:
+Path: lang-engine/symbol_table
 
-- Hierarchical scope model
-- Persistent symbol arena
-- Cross-file symbol linking
-- Fast symbol lookup (O(1) average)
-- Shadowing detection
-- Namespace partitioning
-- Module-level resolution
-- Generic symbol instantiation
-- Stable symbol IDs
-- Incremental invalidation support
-- Snapshot-consistent symbol state
-- Deterministic resolution mode
-- Metrics + profiler integration
+Language-analysis pipeline from lexing and parsing to semantic passes and diagnostics.
+
+## Who This Is For
+- Beginner: Read this first to understand ownership and boundaries.
+- Intermediate: Use this folder as your implementation scope for focused changes.
+- Professional: Validate contracts with neighboring modules before merging.
+
+## What You Will Find Here
+- Implementation files for this subsystem (Vitte sources and related assets).
+- Local tests or benchmarks where relevant.
+- Integration glue connecting this module to the wider editor platform.
+
+## Practical Workflow
+1. Identify entry files and read them end to end.
+2. Implement small, reversible changes.
+3. Run checks and tests targeted to this module.
+4. Validate behavior in upstream and downstream integrations.
+
+## Quality Checklist
+- Behavior is correct for expected and edge paths.
+- No hidden regressions in logs, diagnostics, or user-visible behavior.
+- Performance-sensitive paths are benchmarked when modified.
+
+## Notes For Contributors
+- Keep naming explicit and intent-oriented.
+- Prefer readable control flow over clever shortcuts.
+- Document non-obvious tradeoffs close to the code.
+
+## Next Step
+Update dependent modules when grammar or semantic contracts change.

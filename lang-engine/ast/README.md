@@ -1,15 +1,34 @@
-# PlatonEditor Language Engine AST — ULTRA MAX MAX
+# Ast
 
-Advanced multi-language AST core:
+Path: lang-engine/ast
 
-- Unified AST representation
-- Incremental AST updates
-- Green/Red tree architecture
-- Lossless syntax tree support
-- Error-tolerant parsing nodes
-- Multi-language abstraction layer (30+ languages ready)
-- Symbol table integration
-- Cross-file AST linking
-- Snapshot-consistent tree state
-- Deterministic parsing mode
-- Metrics + profiler integration
+Language-analysis pipeline from lexing and parsing to semantic passes and diagnostics.
+
+## Who This Is For
+- Beginner: Read this first to understand ownership and boundaries.
+- Intermediate: Use this folder as your implementation scope for focused changes.
+- Professional: Validate contracts with neighboring modules before merging.
+
+## What You Will Find Here
+- Implementation files for this subsystem (Vitte sources and related assets).
+- Local tests or benchmarks where relevant.
+- Integration glue connecting this module to the wider editor platform.
+
+## Practical Workflow
+1. Identify entry files and read them end to end.
+2. Implement small, reversible changes.
+3. Run checks and tests targeted to this module.
+4. Validate behavior in upstream and downstream integrations.
+
+## Quality Checklist
+- Behavior is correct for expected and edge paths.
+- No hidden regressions in logs, diagnostics, or user-visible behavior.
+- Performance-sensitive paths are benchmarked when modified.
+
+## Notes For Contributors
+- Keep naming explicit and intent-oriented.
+- Prefer readable control flow over clever shortcuts.
+- Document non-obvious tradeoffs close to the code.
+
+## Next Step
+Update dependent modules when grammar or semantic contracts change.

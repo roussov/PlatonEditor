@@ -1,18 +1,34 @@
-# PlatonEditor Language Engine Semantic — ULTRA MAX MAX
+# Semantic
 
-Advanced semantic analysis layer:
+Path: lang-engine/semantic
 
-- Symbol resolution engine
-- Type inference core
-- Constraint solving system
-- Dataflow analysis engine
-- Control-flow graph (CFG) builder
-- Cross-file reference resolution
-- Semantic diagnostics emission
-- Refactoring core hooks
-- Rename safety engine
-- Unused code detection
-- Dead code elimination hints
-- Snapshot-consistent semantic state
-- Deterministic analysis mode
-- Metrics + profiler integration
+Language-analysis pipeline from lexing and parsing to semantic passes and diagnostics.
+
+## Who This Is For
+- Beginner: Read this first to understand ownership and boundaries.
+- Intermediate: Use this folder as your implementation scope for focused changes.
+- Professional: Validate contracts with neighboring modules before merging.
+
+## What You Will Find Here
+- Implementation files for this subsystem (Vitte sources and related assets).
+- Local tests or benchmarks where relevant.
+- Integration glue connecting this module to the wider editor platform.
+
+## Practical Workflow
+1. Identify entry files and read them end to end.
+2. Implement small, reversible changes.
+3. Run checks and tests targeted to this module.
+4. Validate behavior in upstream and downstream integrations.
+
+## Quality Checklist
+- Behavior is correct for expected and edge paths.
+- No hidden regressions in logs, diagnostics, or user-visible behavior.
+- Performance-sensitive paths are benchmarked when modified.
+
+## Notes For Contributors
+- Keep naming explicit and intent-oriented.
+- Prefer readable control flow over clever shortcuts.
+- Document non-obvious tradeoffs close to the code.
+
+## Next Step
+Update dependent modules when grammar or semantic contracts change.

@@ -1,14 +1,34 @@
-# PlatonEditor Gap Buffer Engine — MAX MAX
+# Gap
 
-Kernel-grade local edit engine:
+Path: editor/core/gap
 
-- Cache-optimized contiguous memory
-- Dynamic gap resizing
-- SIMD memmove hooks
-- Amortized O(1) insertion
-- Predictive gap expansion
-- Unicode-safe insertion
-- Transaction-aware operations
-- Dirty region integration
-- Concurrency-safe local mutation
-- Micro-bench instrumentation
+Core editing data structures and state transitions (buffering, cursoring, history, transactions).
+
+## Who This Is For
+- Beginner: Read this first to understand ownership and boundaries.
+- Intermediate: Use this folder as your implementation scope for focused changes.
+- Professional: Validate contracts with neighboring modules before merging.
+
+## What You Will Find Here
+- Implementation files for this subsystem (Vitte sources and related assets).
+- Local tests or benchmarks where relevant.
+- Integration glue connecting this module to the wider editor platform.
+
+## Practical Workflow
+1. Identify entry files and read them end to end.
+2. Implement small, reversible changes.
+3. Run checks and tests targeted to this module.
+4. Validate behavior in upstream and downstream integrations.
+
+## Quality Checklist
+- Behavior is correct for expected and edge paths.
+- No hidden regressions in logs, diagnostics, or user-visible behavior.
+- Performance-sensitive paths are benchmarked when modified.
+
+## Notes For Contributors
+- Keep naming explicit and intent-oriented.
+- Prefer readable control flow over clever shortcuts.
+- Document non-obvious tradeoffs close to the code.
+
+## Next Step
+Preserve invariants first, optimize only after correctness is covered.

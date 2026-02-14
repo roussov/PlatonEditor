@@ -1,19 +1,34 @@
-# PlatonEditor Terminal Metrics — ULTRA MAX MAX
+# Metrics
 
-Advanced observability layer for terminal subsystem:
+Path: editor/term/metrics
 
-- Render FPS counter
-- Frame time histogram (ns precision)
-- Scroll latency metrics
-- Input-to-render latency tracking
-- PTY throughput metrics
-- ANSI parse cost metrics
-- Damage region efficiency ratio
-- Glyph cache hit/miss ratio
-- Scrollback memory usage
-- Ring buffer pressure gauge
-- Per-thread terminal metrics registry
-- Real-time dashboard bridge
-- Prometheus + JSON exporter
-- Deterministic replay tagging
-- Profiler integration hooks
+Terminal and TTY layers: input decoding, rendering pipeline, shell process bridge.
+
+## Who This Is For
+- Beginner: Read this first to understand ownership and boundaries.
+- Intermediate: Use this folder as your implementation scope for focused changes.
+- Professional: Validate contracts with neighboring modules before merging.
+
+## What You Will Find Here
+- Implementation files for this subsystem (Vitte sources and related assets).
+- Local tests or benchmarks where relevant.
+- Integration glue connecting this module to the wider editor platform.
+
+## Practical Workflow
+1. Identify entry files and read them end to end.
+2. Implement small, reversible changes.
+3. Run checks and tests targeted to this module.
+4. Validate behavior in upstream and downstream integrations.
+
+## Quality Checklist
+- Behavior is correct for expected and edge paths.
+- No hidden regressions in logs, diagnostics, or user-visible behavior.
+- Performance-sensitive paths are benchmarked when modified.
+
+## Notes For Contributors
+- Keep naming explicit and intent-oriented.
+- Prefer readable control flow over clever shortcuts.
+- Document non-obvious tradeoffs close to the code.
+
+## Next Step
+Verify interactive workflows, not only isolated functions.

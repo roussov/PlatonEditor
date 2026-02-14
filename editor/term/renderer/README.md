@@ -1,18 +1,34 @@
-# PlatonEditor Terminal Renderer — ULTRA MAX MAX
+# Renderer
 
-Ultra-high-performance terminal rendering engine:
+Path: editor/term/renderer
 
-- Double-buffer diff rendering
-- Dirty region tracking
-- SIMD cell comparison
-- 24-bit color pipeline
-- GPU text atlas bridge (future-ready)
-- Subpixel glyph positioning
-- UTF-8 grapheme rendering
-- Scroll region optimization
-- Alternate screen buffer
-- Zero-copy arena integration
-- Frame pacing control
-- VSync optional sync mode
-- Snapshot-consistent frame capture
-- Metrics + profiler integration
+Terminal and TTY layers: input decoding, rendering pipeline, shell process bridge.
+
+## Who This Is For
+- Beginner: Read this first to understand ownership and boundaries.
+- Intermediate: Use this folder as your implementation scope for focused changes.
+- Professional: Validate contracts with neighboring modules before merging.
+
+## What You Will Find Here
+- Implementation files for this subsystem (Vitte sources and related assets).
+- Local tests or benchmarks where relevant.
+- Integration glue connecting this module to the wider editor platform.
+
+## Practical Workflow
+1. Identify entry files and read them end to end.
+2. Implement small, reversible changes.
+3. Run checks and tests targeted to this module.
+4. Validate behavior in upstream and downstream integrations.
+
+## Quality Checklist
+- Behavior is correct for expected and edge paths.
+- No hidden regressions in logs, diagnostics, or user-visible behavior.
+- Performance-sensitive paths are benchmarked when modified.
+
+## Notes For Contributors
+- Keep naming explicit and intent-oriented.
+- Prefer readable control flow over clever shortcuts.
+- Document non-obvious tradeoffs close to the code.
+
+## Next Step
+Verify interactive workflows, not only isolated functions.

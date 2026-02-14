@@ -1,18 +1,34 @@
-# PlatonEditor Replace Engine — ULTRA MAX MAX
+# Replace
 
-High-performance replace subsystem:
+Path: editor/search/replace
 
-- Regex-based replace
-- Fuzzy-assisted replace suggestions
-- Multi-buffer replace (workspace-wide)
-- Preview diff mode
-- Snapshot-safe atomic replace
-- Transaction-integrated batch replace
-- Streaming replace for 8GB+ files
-- SIMD literal fast-path
-- Capture group expansion
-- Case-preserving replace
-- AST-aware safe replace (symbols only)
-- Parallel replace engine
-- Undo/Redo integration
-- Metrics + profiler integration
+Search stack: indexing, fuzzy matching, regex, replace pipeline, and SIMD acceleration.
+
+## Who This Is For
+- Beginner: Read this first to understand ownership and boundaries.
+- Intermediate: Use this folder as your implementation scope for focused changes.
+- Professional: Validate contracts with neighboring modules before merging.
+
+## What You Will Find Here
+- Implementation files for this subsystem (Vitte sources and related assets).
+- Local tests or benchmarks where relevant.
+- Integration glue connecting this module to the wider editor platform.
+
+## Practical Workflow
+1. Identify entry files and read them end to end.
+2. Implement small, reversible changes.
+3. Run checks and tests targeted to this module.
+4. Validate behavior in upstream and downstream integrations.
+
+## Quality Checklist
+- Behavior is correct for expected and edge paths.
+- No hidden regressions in logs, diagnostics, or user-visible behavior.
+- Performance-sensitive paths are benchmarked when modified.
+
+## Notes For Contributors
+- Keep naming explicit and intent-oriented.
+- Prefer readable control flow over clever shortcuts.
+- Document non-obvious tradeoffs close to the code.
+
+## Next Step
+Check relevance quality and throughput together.

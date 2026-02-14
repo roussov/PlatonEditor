@@ -1,19 +1,34 @@
-# PlatonEditor Slab Allocator — ULTRA MAX MAX
+# Slab
 
-Kernel-grade slab allocator:
+Path: editor/runtime/slab
 
-- Fixed-size slab classes
-- Per-thread magazines
-- Lock-free fast path
-- NUMA-aware allocation
-- Cache-line alignment
-- Partial/full slab tracking
-- Slab recycling
-- Huge object fallback (mmap bridge)
-- Fragmentation monitoring
-- Background slab rebalancer
-- Snapshot/Transaction safe integration
-- Arena bridge integration
-- Allocation tracing hooks
-- Deterministic replay tagging
-- Nanosecond profiling
+Runtime primitives: scheduler, pools, allocation, metrics, and profiler plumbing.
+
+## Who This Is For
+- Beginner: Read this first to understand ownership and boundaries.
+- Intermediate: Use this folder as your implementation scope for focused changes.
+- Professional: Validate contracts with neighboring modules before merging.
+
+## What You Will Find Here
+- Implementation files for this subsystem (Vitte sources and related assets).
+- Local tests or benchmarks where relevant.
+- Integration glue connecting this module to the wider editor platform.
+
+## Practical Workflow
+1. Identify entry files and read them end to end.
+2. Implement small, reversible changes.
+3. Run checks and tests targeted to this module.
+4. Validate behavior in upstream and downstream integrations.
+
+## Quality Checklist
+- Behavior is correct for expected and edge paths.
+- No hidden regressions in logs, diagnostics, or user-visible behavior.
+- Performance-sensitive paths are benchmarked when modified.
+
+## Notes For Contributors
+- Keep naming explicit and intent-oriented.
+- Prefer readable control flow over clever shortcuts.
+- Document non-obvious tradeoffs close to the code.
+
+## Next Step
+Measure under load to avoid hidden latency or contention regressions.

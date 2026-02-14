@@ -1,15 +1,34 @@
-# PlatonEditor Language Engine Highlight — ULTRA MAX MAX
+# Highlight
 
-High-performance multi-language syntax highlighting engine:
+Path: lang-engine/highlight
 
-- Incremental token-based highlighting
-- AST-enhanced semantic highlighting
-- SIMD-accelerated token scanning bridge
-- Multi-language adapters (30+ languages ready)
-- Theme-aware color mapping
-- Large file streaming highlight (8GB+)
-- Layered highlight system (syntax + semantic + diagnostics)
-- Zero-allocation hot path rendering
-- Snapshot-consistent highlight state
-- Deterministic highlight mode
-- Metrics + profiler integration
+Language-analysis pipeline from lexing and parsing to semantic passes and diagnostics.
+
+## Who This Is For
+- Beginner: Read this first to understand ownership and boundaries.
+- Intermediate: Use this folder as your implementation scope for focused changes.
+- Professional: Validate contracts with neighboring modules before merging.
+
+## What You Will Find Here
+- Implementation files for this subsystem (Vitte sources and related assets).
+- Local tests or benchmarks where relevant.
+- Integration glue connecting this module to the wider editor platform.
+
+## Practical Workflow
+1. Identify entry files and read them end to end.
+2. Implement small, reversible changes.
+3. Run checks and tests targeted to this module.
+4. Validate behavior in upstream and downstream integrations.
+
+## Quality Checklist
+- Behavior is correct for expected and edge paths.
+- No hidden regressions in logs, diagnostics, or user-visible behavior.
+- Performance-sensitive paths are benchmarked when modified.
+
+## Notes For Contributors
+- Keep naming explicit and intent-oriented.
+- Prefer readable control flow over clever shortcuts.
+- Document non-obvious tradeoffs close to the code.
+
+## Next Step
+Update dependent modules when grammar or semantic contracts change.

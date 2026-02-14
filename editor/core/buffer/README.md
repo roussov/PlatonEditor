@@ -1,16 +1,34 @@
-# PlatonEditor Buffer Core — MAX MAX
+# Buffer
 
-Industrial text engine architecture:
+Path: editor/core/buffer
 
-- Rope + Piece Table hybrid
-- Gap buffer local optimization
-- Persistent undo/redo snapshots
-- Transaction engine
-- Multi-buffer support
-- Memory arenas + slab allocator
-- Incremental dirty range tracking
-- Background indexing hooks
-- Lock-free read model
-- Concurrent mutation model (optional)
-- mmap file support
-- Huge file (>2GB) optimized
+Core editing data structures and state transitions (buffering, cursoring, history, transactions).
+
+## Who This Is For
+- Beginner: Read this first to understand ownership and boundaries.
+- Intermediate: Use this folder as your implementation scope for focused changes.
+- Professional: Validate contracts with neighboring modules before merging.
+
+## What You Will Find Here
+- Implementation files for this subsystem (Vitte sources and related assets).
+- Local tests or benchmarks where relevant.
+- Integration glue connecting this module to the wider editor platform.
+
+## Practical Workflow
+1. Identify entry files and read them end to end.
+2. Implement small, reversible changes.
+3. Run checks and tests targeted to this module.
+4. Validate behavior in upstream and downstream integrations.
+
+## Quality Checklist
+- Behavior is correct for expected and edge paths.
+- No hidden regressions in logs, diagnostics, or user-visible behavior.
+- Performance-sensitive paths are benchmarked when modified.
+
+## Notes For Contributors
+- Keep naming explicit and intent-oriented.
+- Prefer readable control flow over clever shortcuts.
+- Document non-obvious tradeoffs close to the code.
+
+## Next Step
+Preserve invariants first, optimize only after correctness is covered.
