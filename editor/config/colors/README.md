@@ -1,34 +1,41 @@
 # Colors
 
-Path: editor/config/colors
+This folder controls theme colors, token color mapping, and runtime theme behavior.
+If rendering looks wrong, contrast is bad, or a token has the wrong color, this is the right place.
 
-User-facing and runtime configuration systems for behavior, visuals, and keybindings.
+## Read This First
+- `editor/config/colors/engine/rgb.vit`
+- `editor/config/colors/engine/theme_loader.vit`
+- `editor/config/colors/engine/semantic_tokens.vit`
+- `editor/config/colors/importers/vscode_converter.vit`
+- `editor/config/colors/tests/wcag_tests.vit`
 
-## Who This Is For
-- Beginner: Read this first to understand ownership and boundaries.
-- Intermediate: Use this folder as your implementation scope for focused changes.
-- Professional: Validate contracts with neighboring modules before merging.
+## What You Change Here
+- Add a new theme color or token mapping.
+- Fix semantic token style resolution.
+- Improve accessibility and contrast checks.
+- Import or adapt external theme formats.
 
-## What You Will Find Here
-- Implementation files for this subsystem (Vitte sources and related assets).
-- Local tests or benchmarks where relevant.
-- Integration glue connecting this module to the wider editor platform.
+## Typical Workflow
+1. Update engine logic or theme mapping.
+2. Validate contrast rules and fallback behavior.
+3. Run tests in `editor/config/colors/tests/`.
+4. Check runtime behavior in `editor/config/colors/runtime/`.
 
-## Practical Workflow
-1. Identify entry files and read them end to end.
-2. Implement small, reversible changes.
-3. Run checks and tests targeted to this module.
-4. Validate behavior in upstream and downstream integrations.
+## Common Problems
+- Theme loads but wrong token colors appear.
+- Low contrast in warning/error text.
+- Import conversion drops some token types.
+- Runtime switch keeps stale colors.
 
-## Quality Checklist
-- Behavior is correct for expected and edge paths.
-- No hidden regressions in logs, diagnostics, or user-visible behavior.
-- Performance-sensitive paths are benchmarked when modified.
+## Beginner Notes
+- Change one token category at a time (keyword, string, type, etc.).
+- Compare before and after using a small sample file.
 
-## Notes For Contributors
-- Keep naming explicit and intent-oriented.
-- Prefer readable control flow over clever shortcuts.
-- Document non-obvious tradeoffs close to the code.
+## Intermediate Notes
+- Keep engine and importer behavior consistent.
+- Update tests when changing mapping rules.
 
-## Next Step
-Protect backward compatibility for existing user settings.
+## Pro Notes
+- Treat accessibility regressions as release blockers.
+- Preserve compatibility with existing theme JSON files.

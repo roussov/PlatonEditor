@@ -1,34 +1,48 @@
-# Github
+# GitHub CI
 
-Path: ci/github
+This folder contains GitHub-focused automation scripts and performance checks.
+If CI output is unclear, inconsistent, or missing key status values, start here.
 
-Continuous Integration and release automation for build, test, packaging, and reporting.
+## Read This First
+- `ci/github/scripts/build.sh`
+- `ci/github/scripts/test.sh`
+- `ci/github/scripts/lint.sh`
+- `ci/github/scripts/bench.sh`
+- `ci/github/scripts/package.sh`
+- `ci/github/performance/regression_check.vit`
 
-## Who This Is For
-- Beginner: Read this first to understand ownership and boundaries.
-- Intermediate: Use this folder as your implementation scope for focused changes.
-- Professional: Validate contracts with neighboring modules before merging.
+## What You Change Here
+- Step outputs and summary format.
+- Script behavior for build, test, lint, bench, package.
+- Regression check messaging.
 
-## What You Will Find Here
-- Implementation files for this subsystem (Vitte sources and related assets).
-- Local tests or benchmarks where relevant.
-- Integration glue connecting this module to the wider editor platform.
+## Current Stats Convention
+Use `Vitte_*` keys only for stats outputs.
+Examples:
+- `Vitte_STAGE`
+- `Vitte_BUILD_STATUS`
+- `Vitte_TEST_STATUS`
+- `Vitte_BENCH_STATUS`
 
-## Practical Workflow
-1. Identify entry files and read them end to end.
-2. Implement small, reversible changes.
-3. Run checks and tests targeted to this module.
-4. Validate behavior in upstream and downstream integrations.
+## Typical Workflow
+1. Update one script.
+2. Verify local shell output.
+3. Verify `GITHUB_OUTPUT` and `GITHUB_STEP_SUMMARY` format.
+4. Keep naming consistent across all scripts.
 
-## Quality Checklist
-- Behavior is correct for expected and edge paths.
-- No hidden regressions in logs, diagnostics, or user-visible behavior.
-- Performance-sensitive paths are benchmarked when modified.
+## Common Problems
+- Mixed key naming across steps.
+- Step summary contains labels not expected by dashboards.
+- Script exits successfully but emits no stats.
 
-## Notes For Contributors
-- Keep naming explicit and intent-oriented.
-- Prefer readable control flow over clever shortcuts.
-- Document non-obvious tradeoffs close to the code.
+## Beginner Notes
+- Edit one script at a time.
+- Keep output lines explicit and easy to grep.
 
-## Next Step
-Keep pipeline changes deterministic and easy to debug from logs.
+## Intermediate Notes
+- Keep status output shape identical across scripts.
+- Avoid hidden side effects in helper commands.
+
+## Pro Notes
+- Treat CI output format as a public contract.
+- Break format only with coordinated dashboard updates.

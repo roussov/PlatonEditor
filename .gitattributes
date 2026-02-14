@@ -1,6 +1,10 @@
-# GitHub Linguist overrides for Vitte files
-*.vit linguist-language=Vitte linguist-detectable=true
-*.vitte linguist-language=Vitte linguist-detectable=true
+# Force GitHub Linguist to ignore all default languages
+* linguist-detectable=false
+
+# Re-include only Vitte source extensions without mapping to a known language.
+# This keeps language stats in the generic "Other" bucket.
+*.vit linguist-detectable=true
+*.vitte linguist-detectable=true
 
 # Keep generated artifacts out of language stats
 build/** linguist-generated=true

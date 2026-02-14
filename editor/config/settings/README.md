@@ -1,34 +1,41 @@
 # Settings
 
-Path: editor/config/settings
+This folder manages application settings from different sources.
+If a setting is ignored, overridden incorrectly, or not persisted, investigate here.
 
-User-facing and runtime configuration systems for behavior, visuals, and keybindings.
+## Read This First
+- `editor/config/settings/engine/schema.vit`
+- `editor/config/settings/engine/resolver.vit`
+- `editor/config/settings/engine/layered_store.vit`
+- `editor/config/settings/engine/live_reload.vit`
+- `editor/config/settings/tests/`
 
-## Who This Is For
-- Beginner: Read this first to understand ownership and boundaries.
-- Intermediate: Use this folder as your implementation scope for focused changes.
-- Professional: Validate contracts with neighboring modules before merging.
+## What You Change Here
+- Add a new setting key.
+- Change default values.
+- Change override order (CLI, workspace, user, default).
+- Add import/export behavior.
 
-## What You Will Find Here
-- Implementation files for this subsystem (Vitte sources and related assets).
-- Local tests or benchmarks where relevant.
-- Integration glue connecting this module to the wider editor platform.
+## Typical Workflow
+1. Define or update the key in schema.
+2. Update resolver and source precedence.
+3. Verify import/export if needed.
+4. Run settings tests.
 
-## Practical Workflow
-1. Identify entry files and read them end to end.
-2. Implement small, reversible changes.
-3. Run checks and tests targeted to this module.
-4. Validate behavior in upstream and downstream integrations.
+## Common Problems
+- Value exists but wrong source wins.
+- Type conversion fails silently.
+- Live reload updates only part of the state.
+- CLI override does not persist expected value.
 
-## Quality Checklist
-- Behavior is correct for expected and edge paths.
-- No hidden regressions in logs, diagnostics, or user-visible behavior.
-- Performance-sensitive paths are benchmarked when modified.
+## Beginner Notes
+- Start by reading schema and resolver only.
+- Avoid changing multiple precedence rules in one pass.
 
-## Notes For Contributors
-- Keep naming explicit and intent-oriented.
-- Prefer readable control flow over clever shortcuts.
-- Document non-obvious tradeoffs close to the code.
+## Intermediate Notes
+- Keep schema, resolver, and tests in sync.
+- Document expected precedence directly in code comments.
 
-## Next Step
-Protect backward compatibility for existing user settings.
+## Pro Notes
+- Guard backward compatibility for existing config files.
+- Treat silent misconfiguration as a high-priority bug.

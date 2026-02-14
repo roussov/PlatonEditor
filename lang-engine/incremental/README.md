@@ -1,34 +1,35 @@
 # Incremental
 
-Path: lang-engine/incremental
+## What This Folder Is For
+This folder handles language reading and analysis behavior.
 
-Language-analysis pipeline from lexing and parsing to semantic passes and diagnostics.
+## Current Snapshot
+- Path: lang-engine/incremental
+- Vitte files: 179
+- Markdown files: 1
+- Test-like files: 160
+- Benchmark-like files: 4
 
-## Who This Is For
-- Beginner: Read this first to understand ownership and boundaries.
-- Intermediate: Use this folder as your implementation scope for focused changes.
-- Professional: Validate contracts with neighboring modules before merging.
+## Main Subfolders
+- bench
+- cross_file
+- integration
+- graph
+- tests
+- diff
+- batch
+- profiling
 
-## What You Will Find Here
-- Implementation files for this subsystem (Vitte sources and related assets).
-- Local tests or benchmarks where relevant.
-- Integration glue connecting this module to the wider editor platform.
+## Simple Working Method
+1. Read a small set of files first.
+2. Change one thing at a time.
+3. Run local checks.
+4. Review impact before moving on.
 
-## Practical Workflow
-1. Identify entry files and read them end to end.
-2. Implement small, reversible changes.
-3. Run checks and tests targeted to this module.
-4. Validate behavior in upstream and downstream integrations.
+## Guidance By Level
+- Beginner: learn folder purpose first, then edit one file.
+- Intermediate: group changes by feature, not by file type.
+- Pro: check side effects across nearby folders.
 
-## Quality Checklist
-- Behavior is correct for expected and edge paths.
-- No hidden regressions in logs, diagnostics, or user-visible behavior.
-- Performance-sensitive paths are benchmarked when modified.
-
-## Notes For Contributors
-- Keep naming explicit and intent-oriented.
-- Prefer readable control flow over clever shortcuts.
-- Document non-obvious tradeoffs close to the code.
-
-## Next Step
-Update dependent modules when grammar or semantic contracts change.
+## Practical Tip
+When rules change, verify related modules too.

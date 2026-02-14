@@ -1,32 +1,32 @@
 # PlatonEditor
 
-PlatonEditor is a modular editor platform built around Vitte (.vit) components. This repository is organized by domain so you can work on one subsystem at a time without losing the global architecture.
+PlatonEditor is organized into clear folders so you can work step by step.
+You do not need to understand everything at once.
 
-## Audience
-- Beginner: Start with one module README, then run small local checks.
-- Intermediate: Use domain folders (editor, lang-engine, ci, benchmarks) to move fast.
-- Professional: Focus on cross-module contracts, CI quality gates, and performance trends.
+## What This Repository Contains
+- `editor/`: the product features people use.
+- `lang-engine/`: language behavior behind parsing and code understanding.
+- `ci/`: automation scripts for checks and releases.
+- `benchmarks/`: speed and stability measurement scenarios.
 
-## Repository Map
-- editor/: Editor runtime, UI, terminal, search, config, and debugger integrations.
-- lang-engine/: Lexer, parser, AST/HIR, semantics, formatter, diagnostics, incremental infra.
-- ci/: Pipelines, packaging, benchmark orchestration, GitHub automation.
-- benchmarks/: Scenario-based performance workloads.
-- languages/: Language-specific adapters.
+## How To Work Safely
+1. Choose one folder.
+2. Read that folder README first.
+3. Make a small change.
+4. Run checks for that folder.
+5. Only then move to the next change.
 
-## Quick Start
-1. Read the README in your target module.
-2. Make a small and reversible change.
-3. Run targeted checks for that module.
-4. Validate integration behavior in adjacent modules.
+## For Beginners
+Start with one small folder and one small file.
+Do not try to change multiple systems in one commit.
 
-## Engineering Principles
-- Correctness first, then performance.
-- Prefer explicit naming and predictable control flow.
-- Keep changes observable with logs, tests, or benchmarks.
+## For Intermediate Contributors
+Work by feature boundaries.
+Keep changes readable and test after each step.
 
-## How These READMEs Are Written
-Every README is designed for three levels:
-- Beginner: what this module does.
-- Intermediate: how to modify and validate it.
-- Professional: contracts, risks, and production concerns.
+## For Professional Contributors
+Review cross-folder impact before merge.
+Keep behavior stable and regression risk low.
+
+## Project Goal
+Clear code, predictable behavior, and reliable delivery.

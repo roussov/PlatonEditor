@@ -1,34 +1,41 @@
 # Parser
 
-Path: lang-engine/parser
+This folder contains the parser pipeline for language input.
+If syntax parsing breaks, ambiguity increases, or incremental parsing regresses, this folder is central.
 
-Language-analysis pipeline from lexing and parsing to semantic passes and diagnostics.
+## Read This First
+- `lang-engine/parser/parser.vit`
+- `lang-engine/parser/grammar/`
+- `lang-engine/parser/lookahead/`
+- `lang-engine/parser/incremental/`
+- `lang-engine/parser/tests/`
 
-## Who This Is For
-- Beginner: Read this first to understand ownership and boundaries.
-- Intermediate: Use this folder as your implementation scope for focused changes.
-- Professional: Validate contracts with neighboring modules before merging.
+## What You Change Here
+- Grammar rules.
+- Token-to-node parsing logic.
+- Ambiguity handling.
+- Incremental parse update behavior.
 
-## What You Will Find Here
-- Implementation files for this subsystem (Vitte sources and related assets).
-- Local tests or benchmarks where relevant.
-- Integration glue connecting this module to the wider editor platform.
+## Typical Workflow
+1. Reproduce with a small failing source snippet.
+2. Locate the responsible grammar or parser path.
+3. Change one rule or one decision point.
+4. Run parser tests, then integration tests.
 
-## Practical Workflow
-1. Identify entry files and read them end to end.
-2. Implement small, reversible changes.
-3. Run checks and tests targeted to this module.
-4. Validate behavior in upstream and downstream integrations.
+## Common Problems
+- New rule breaks old valid syntax.
+- Ambiguous parse path produces unstable trees.
+- Incremental update path diverges from full parse path.
+- Error messages point to the wrong location.
 
-## Quality Checklist
-- Behavior is correct for expected and edge paths.
-- No hidden regressions in logs, diagnostics, or user-visible behavior.
-- Performance-sensitive paths are benchmarked when modified.
+## Beginner Notes
+- Start with a small test and one grammar change.
+- Avoid touching incremental logic first.
 
-## Notes For Contributors
-- Keep naming explicit and intent-oriented.
-- Prefer readable control flow over clever shortcuts.
-- Document non-obvious tradeoffs close to the code.
+## Intermediate Notes
+- Add or update tests for every grammar change.
+- Check parse behavior on both valid and invalid code.
 
-## Next Step
-Update dependent modules when grammar or semantic contracts change.
+## Pro Notes
+- Preserve deterministic parse output.
+- Watch impact on semantic, diagnostics, and formatter modules.

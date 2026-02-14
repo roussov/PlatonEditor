@@ -1,34 +1,32 @@
 # Startup
 
-Path: benchmarks/startup
+## What This Folder Is For
+This folder measures performance. It helps you detect if changes make behavior faster or slower.
 
-Benchmark scenarios and runners used to measure performance trends over time.
+## Current Snapshot
+- Path: benchmarks/startup
+- Vitte files: 29
+- Markdown files: 1
+- Test-like files: 0
+- Benchmark-like files: 0
 
-## Who This Is For
-- Beginner: Read this first to understand ownership and boundaries.
-- Intermediate: Use this folder as your implementation scope for focused changes.
-- Professional: Validate contracts with neighboring modules before merging.
+## Main Subfolders
+- metrics
+- modes
+- runners
+- phases
+- stress
 
-## What You Will Find Here
-- Implementation files for this subsystem (Vitte sources and related assets).
-- Local tests or benchmarks where relevant.
-- Integration glue connecting this module to the wider editor platform.
+## Simple Working Method
+1. Read a small set of files first.
+2. Change one thing at a time.
+3. Run local checks.
+4. Review impact before moving on.
 
-## Practical Workflow
-1. Identify entry files and read them end to end.
-2. Implement small, reversible changes.
-3. Run checks and tests targeted to this module.
-4. Validate behavior in upstream and downstream integrations.
+## Guidance By Level
+- Beginner: learn folder purpose first, then edit one file.
+- Intermediate: group changes by feature, not by file type.
+- Pro: check side effects across nearby folders.
 
-## Quality Checklist
-- Behavior is correct for expected and edge paths.
-- No hidden regressions in logs, diagnostics, or user-visible behavior.
-- Performance-sensitive paths are benchmarked when modified.
-
-## Notes For Contributors
-- Keep naming explicit and intent-oriented.
-- Prefer readable control flow over clever shortcuts.
-- Document non-obvious tradeoffs close to the code.
-
-## Next Step
-When algorithms change, compare before/after numbers for latency, throughput, and memory.
+## Practical Tip
+Compare before/after numbers when logic changes.

@@ -1,34 +1,41 @@
 # Keybindings
 
-Path: editor/config/keybindings
+This folder defines how keyboard shortcuts are declared, resolved, and executed.
+If a shortcut does not trigger, triggers the wrong action, or conflicts with another one, start here.
 
-User-facing and runtime configuration systems for behavior, visuals, and keybindings.
+## Read This First
+- `editor/config/keybindings/engine/keymap.vit`
+- `editor/config/keybindings/engine/context.vit`
+- `editor/config/keybindings/engine/conflict_detector.vit`
+- `editor/config/keybindings/advanced/chords.vit`
+- `editor/config/keybindings/advanced/macros.vit`
 
-## Who This Is For
-- Beginner: Read this first to understand ownership and boundaries.
-- Intermediate: Use this folder as your implementation scope for focused changes.
-- Professional: Validate contracts with neighboring modules before merging.
+## What You Change Here
+- Add or update a shortcut.
+- Add a context rule (mode, selection, terminal, readonly, search).
+- Handle collisions between shortcuts.
+- Update chord behavior (multi-key sequences).
 
-## What You Will Find Here
-- Implementation files for this subsystem (Vitte sources and related assets).
-- Local tests or benchmarks where relevant.
-- Integration glue connecting this module to the wider editor platform.
+## Typical Workflow
+1. Add or adjust one rule in `engine` or `advanced`.
+2. Verify context logic in `context.vit`.
+3. Verify conflict logic in `conflict_detector.vit`.
+4. Run related tests in `editor/config/keybindings/tests/`.
 
-## Practical Workflow
-1. Identify entry files and read them end to end.
-2. Implement small, reversible changes.
-3. Run checks and tests targeted to this module.
-4. Validate behavior in upstream and downstream integrations.
+## Common Problems
+- Two shortcuts match the same input.
+- A shortcut works in one mode but fails in another.
+- Chord timeout resets too early.
+- Plugin binding overrides user binding unexpectedly.
 
-## Quality Checklist
-- Behavior is correct for expected and edge paths.
-- No hidden regressions in logs, diagnostics, or user-visible behavior.
-- Performance-sensitive paths are benchmarked when modified.
+## Beginner Notes
+- Start with one single-key binding before editing chords.
+- Keep changes local to one file first.
 
-## Notes For Contributors
-- Keep naming explicit and intent-oriented.
-- Prefer readable control flow over clever shortcuts.
-- Document non-obvious tradeoffs close to the code.
+## Intermediate Notes
+- Keep engine, runtime, and tests aligned in one commit.
+- Write expected behavior in comments near changed logic.
 
-## Next Step
-Protect backward compatibility for existing user settings.
+## Pro Notes
+- Check cross-impact with plugin API and runtime profile switching.
+- Keep backwards behavior stable for existing user configs.
