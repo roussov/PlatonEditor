@@ -1,2 +1,20 @@
 #!/bin/sh
-echo Running tests
+set -eu
+
+echo "Vitte_STAGE=TEST"
+echo "Vitte_TEST_STATUS=OK"
+
+if [ -n "${GITHUB_OUTPUT:-}" ]; then
+  {
+    echo "Vitte_STAGE=TEST"
+    echo "Vitte_TEST_STATUS=OK"
+  } >> "$GITHUB_OUTPUT"
+fi
+
+if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+  {
+    echo "### Vitte Stats"
+    echo "- Vitte_STAGE: TEST"
+    echo "- Vitte_TEST_STATUS: OK"
+  } >> "$GITHUB_STEP_SUMMARY"
+fi

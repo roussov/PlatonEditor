@@ -1,0 +1,7 @@
+# GitHub Linguist overrides for Vitte files
+*.vit linguist-language=Vitte linguist-detectable=true
+*.vitte linguist-language=Vitte linguist-detectable=true
+
+# Keep generated artifacts out of language stats
+build/** linguist-generated=true
+vitte_out.cpp linguist-generated=true
