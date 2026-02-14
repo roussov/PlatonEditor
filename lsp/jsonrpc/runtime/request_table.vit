@@ -1,0 +1,7 @@
+
+space platon.lsp.jsonrpc.runtime
+
+form PendingRequest { id : int }
+
+proc add_request(id : int) {}
+proc resolve_request(id : int) {}

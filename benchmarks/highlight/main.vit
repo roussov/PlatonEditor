@@ -1,0 +1,9 @@
+space platon.bench.highlight
+
+pull platon.bench.highlight.runners.compare_runner
+pull platon.bench.highlight.metrics.report
+
+entry bench at platon.bench.highlight {
+    compare_runner.run_all()
+    report.generate()
+}

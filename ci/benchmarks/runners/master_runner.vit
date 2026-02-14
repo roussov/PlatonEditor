@@ -1,0 +1,5 @@
+space platon.ci.benchmarks.runners
+
+proc run_all() {
+    # execute all benchmark categories across platforms
+}

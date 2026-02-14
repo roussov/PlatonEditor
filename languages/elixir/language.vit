@@ -1,0 +1,7 @@
+space platon.languages.elixir
+
+form ElixirConfig {
+    tier : string
+}
+
+proc register() {}

@@ -1,0 +1,2 @@
+# smalltalk parser module
+proc parser_entry() { }

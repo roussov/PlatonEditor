@@ -1,0 +1,7 @@
+space platon.languages.dockerfile
+
+form DockerfileConfig {
+    category : string
+}
+
+proc register() {}

@@ -1,0 +1,2 @@
+# cue parser module
+proc parser_entry() { }

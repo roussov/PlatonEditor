@@ -1,0 +1,2 @@
+# idris2 diagnostics module
+proc diagnostics_entry() { }

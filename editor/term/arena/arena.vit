@@ -1,0 +1,14 @@
+
+space platon.editor.term.arena
+
+form TermArena {
+    capacity : int
+    offset : int
+}
+
+proc init(cap : int) -> TermArena {
+    give TermArena { capacity: cap, offset: 0 }
+}
+
+proc alloc(a : TermArena, size : int) -> int {}
+proc reset(a : TermArena) {}

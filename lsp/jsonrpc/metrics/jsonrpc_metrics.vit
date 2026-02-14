@@ -1,0 +1,5 @@
+
+space platon.lsp.jsonrpc.metrics
+
+proc message_count() {}
+proc average_latency() {}

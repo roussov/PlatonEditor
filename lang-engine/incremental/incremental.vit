@@ -1,0 +1,10 @@
+
+space platon.editor.lang_engine.incremental
+
+form Change {
+    start : int
+    end : int
+}
+
+proc apply_change() {}
+proc recompute() {}

@@ -1,0 +1,2 @@
+# vbnet diagnostics module
+proc diagnostics_entry() { }

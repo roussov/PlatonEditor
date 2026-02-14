@@ -1,0 +1,139 @@
+space platon.editor.config.settings.tests.cloud_sync
+
+<<< Cloud Sync Settings ULTRA MAX Test Suite >>>
+<<< Covers basic sync, conflict detection, version drift, stress and rollback safety >>>
+
+form SemVersion {
+    major : int
+    minor : int
+    patch : int
+}
+
+proc assert_true(cond : bool) {
+    if not cond {
+        panic()
+    }
+}
+
+proc assert_false(cond : bool) {
+    if cond {
+        panic()
+    }
+}
+
+proc assert_eq_int(a : int, b : int) {
+    if a != b {
+        panic()
+    }
+}
+
+<<< Basic sync success test >>>
+
+proc test_basic_sync() {
+
+    reset_cloud_state()
+
+    let result = perform_sync()
+
+    assert_true(result.success)
+    assert_false(result.conflict)
+}
+
+<<< Conflict detection test >>>
+
+proc test_conflict_detection() {
+
+    reset_cloud_state()
+
+    simulate_remote_change()
+
+    let result = perform_sync()
+
+    assert_false(result.success)
+    assert_true(result.conflict)
+}
+
+<<< Version increment after sync >>>
+
+proc test_version_increment() {
+
+    reset_cloud_state()
+
+    let v1 = current_reload_version()
+
+    perform_sync()
+
+    let v2 = current_reload_version()
+
+    assert_true(v2 >= v1)
+}
+
+<<< Multiple sync cycles test >>>
+
+proc test_multiple_sync_cycles() {
+
+    reset_cloud_state()
+
+    let i = 0
+
+    loop {
+        if i >= 10 {
+            break
+        }
+
+        perform_sync()
+
+        set i = i + 1
+    }
+
+    assert_true(true)
+}
+
+<<< Stress sync test >>>
+
+proc test_stress_sync() {
+
+    reset_cloud_state()
+
+    stress_sync(50000)
+
+    assert_true(true)
+}
+
+<<< Stress conflict simulation >>>
+
+proc test_stress_conflict() {
+
+    reset_cloud_state()
+
+    stress_conflict(10000)
+
+    assert_true(true)
+}
+
+<<< Migration compatibility test >>>
+
+proc test_migration_compatibility() {
+
+    force_version(1, 0, 0)
+
+    let result = migrate_to(
+        SemVersion { major: 2, minor: 0, patch: 0 }
+    )
+
+    assert_true(result.success)
+    assert_true(result.migrated)
+}
+
+<<< Master runner >>>
+
+proc run_cloud_sync_tests_ultra() {
+
+    test_basic_sync()
+    test_conflict_detection()
+    test_version_increment()
+    test_multiple_sync_cycles()
+    test_stress_sync()
+    test_stress_conflict()
+    test_migration_compatibility()
+}

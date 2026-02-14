@@ -1,0 +1,165 @@
+space platon.editor.config.keybindings.tests.conflict
+
+# Conflict Detector ULTRA MAX++ Test Suite# Covers exact, prefix, mode, shadow, fuzz and stress matrix
+form Binding {
+    mode : string
+    steps_count : int
+    command : string
+}
+
+form ConflictResult {
+    exact_conflict : bool
+    prefix_conflict : bool
+    mode_conflict : bool
+    shadowed : bool
+}
+
+proc assert_true(cond : bool) {
+    if not cond {
+        panic()
+    }
+}
+
+proc assert_false(cond : bool) {
+    if cond {
+        panic()
+    }
+}
+
+proc new_binding(mode : string, steps : int, cmd : string) -> Binding {
+    return Binding {
+        mode: mode,
+        steps_count: steps,
+        command: cmd
+    }
+}
+
+# Exact conflict test
+proc test_exact_conflict() {
+
+    let a = new_binding("normal", 2, "cmd.a")
+    let b = new_binding("normal", 2, "cmd.b")
+
+    let result = evaluate_conflict(a, b)
+
+    assert_true(result.exact_conflict)
+}
+
+# No exact conflict same command
+proc test_no_exact_same_command() {
+
+    let a = new_binding("normal", 2, "cmd.a")
+    let b = new_binding("normal", 2, "cmd.a")
+
+    let result = evaluate_conflict(a, b)
+
+    assert_false(result.exact_conflict)
+}
+
+# Prefix conflict test
+proc test_prefix_conflict() {
+
+    let a = new_binding("normal", 1, "cmd.a")
+    let b = new_binding("normal", 2, "cmd.b")
+
+    let result = evaluate_conflict(a, b)
+
+    assert_true(result.prefix_conflict)
+}
+
+# Mode conflict test
+proc test_mode_conflict() {
+
+    let a = new_binding("normal", 2, "cmd.a")
+    let b = new_binding("visual", 2, "cmd.a")
+
+    let result = evaluate_conflict(a, b)
+
+    assert_true(result.mode_conflict)
+}
+
+# Shadow conflict test
+proc test_shadow_conflict() {
+
+    let a = new_binding("normal", 3, "cmd.a")
+    let b = new_binding("normal", 1, "cmd.b")
+
+    let result = evaluate_conflict(a, b)
+
+    assert_true(result.shadowed)
+}
+
+# Fuzz matrix conflict test
+proc test_fuzz_matrix(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        let a = new_binding(
+            if (i % 2) == 0 { "normal" } else { "insert" },
+            (i % 4) + 1,
+            "cmd.a"
+        )
+
+        let b = new_binding(
+            if (i % 3) == 0 { "normal" } else { "visual" },
+            ((i + 1) % 4) + 1,
+            "cmd.b"
+        )
+
+        evaluate_conflict(a, b)
+
+        set i = i + 1
+    }
+
+    assert_true(true)
+}
+
+# Heavy stress conflict evaluation
+proc test_stress_conflicts() {
+
+    let a = new_binding("normal", 2, "cmd.a")
+    let b = new_binding("normal", 2, "cmd.b")
+
+    let i = 0
+
+    loop {
+        if i >= 100000 {
+            break
+        }
+
+        evaluate_conflict(a, b)
+
+        set i = i + 1
+    }
+
+    assert_true(true)
+}
+
+# Cross mode isolation validation
+proc test_cross_mode_isolation() {
+
+    let a = new_binding("normal", 2, "cmd.a")
+    let b = new_binding("insert", 2, "cmd.b")
+
+    let result = evaluate_conflict(a, b)
+
+    assert_false(result.exact_conflict)
+}
+
+# Master runner
+proc run_conflict_tests_ultra() {
+
+    test_exact_conflict()
+    test_no_exact_same_command()
+    test_prefix_conflict()
+    test_mode_conflict()
+    test_shadow_conflict()
+    test_cross_mode_isolation()
+    test_fuzz_matrix(50000)
+    test_stress_conflicts()
+}

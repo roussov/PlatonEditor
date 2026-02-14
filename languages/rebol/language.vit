@@ -1,0 +1,7 @@
+space platon.languages.rebol
+
+form RebolConfig {
+    category : string
+}
+
+proc register() {}

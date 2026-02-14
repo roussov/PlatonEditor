@@ -1,0 +1,165 @@
+space platon.editor.config.colors.plugin
+
+# ============================================================
+# Core Color Models
+# ============================================================
+
+form Color {
+    r : int
+    g : int
+    b : int
+}
+
+form SemanticOverride {
+    token_type : string
+    fg : Color
+    bold : bool
+    italic : bool
+    underline : bool
+}
+
+form ThemePatch {
+    background : Color
+    overrides_count : int
+}
+
+# ============================================================
+# Plugin Descriptor
+# ============================================================
+
+form ColorPlugin {
+    name : string
+    version : string
+    enabled : bool
+}
+
+# ============================================================
+# Internal Registry
+# ============================================================
+
+const MAX_PLUGINS : int = 64
+
+form Registry {
+    plugins_count : int
+}
+
+# Simplified global registry (engine will back it)
+let registry_plugins_count : int = 0
+
+# ============================================================
+# Registration API
+# ============================================================
+
+proc register_plugin(plugin : ColorPlugin) -> bool {
+
+    if registry_plugins_count >= MAX_PLUGINS {
+        return false
+    }
+
+    set registry_plugins_count = registry_plugins_count + 1
+    return true
+}
+
+proc unregister_plugin() {
+    if registry_plugins_count > 0 {
+        set registry_plugins_count = registry_plugins_count - 1
+    }
+}
+
+# ============================================================
+# Override Injection
+# ============================================================
+
+proc inject_semantic_override(override : SemanticOverride) -> bool {
+
+    if not is_plugin_context() {
+        return false
+    }
+
+    # engine will merge override into semantic resolver
+    apply_override(override)
+
+    return true
+}
+
+proc apply_override(override : SemanticOverride) {
+    # Hook to engine semantic table
+}
+
+# ============================================================
+# Theme Patch API
+# ============================================================
+
+proc patch_theme(patch : ThemePatch) -> bool {
+
+    if not is_plugin_context() {
+        return false
+    }
+
+    apply_theme_patch(patch)
+    return true
+}
+
+proc apply_theme_patch(patch : ThemePatch) {
+    # Hook to theme engine
+}
+
+# ============================================================
+# WCAG Validation Hook
+# ============================================================
+
+proc validate_plugin_color(fg : Color, bg : Color) -> bool {
+
+    let ratio = contrast_ratio(fg, bg)
+
+    return ratio >= 450
+}
+
+# lightweight contrast helper
+proc luminance(c : Color) -> int {
+    return (c.r * 2126 + c.g * 7152 + c.b * 722) / 10000
+}
+
+proc contrast_ratio(a : Color, b : Color) -> int {
+    let la = luminance(a)
+    let lb = luminance(b)
+
+    if la > lb {
+        return (la + 5) * 100 / (lb + 5)
+    } else {
+        return (lb + 5) * 100 / (la + 5)
+    }
+}
+
+# ============================================================
+# Runtime Safety
+# ============================================================
+
+proc is_plugin_context() -> bool {
+    # sandbox check stub
+    return true
+}
+
+# ============================================================
+# Cache Invalidation Hook
+# ============================================================
+
+proc invalidate_color_cache() {
+    # engine cache flush
+}
+
+# ============================================================
+# Hot Reload Support
+# ============================================================
+
+proc reload_plugin() {
+    invalidate_color_cache()
+}
+
+# ============================================================
+# Metrics (debug)
+# ============================================================
+
+proc active_plugins() -> int {
+    return registry_plugins_count
+}

@@ -1,0 +1,2 @@
+# typescript ast module
+proc ast_entry() { }

@@ -1,0 +1,2 @@
+# idris semantic module
+proc semantic_entry() { }

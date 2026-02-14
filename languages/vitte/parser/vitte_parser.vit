@@ -1,0 +1,5 @@
+space platon.languages.vitte.parser
+
+proc parse(tokens) {
+    # grammar handling
+}

@@ -1,0 +1,7 @@
+space platon.languages.scratch
+
+form ScratchConfig {
+    tier : string
+}
+
+proc register() {}

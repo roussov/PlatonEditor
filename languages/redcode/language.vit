@@ -1,0 +1,7 @@
+space platon.languages.redcode
+
+form RedcodeConfig {
+    category : string
+}
+
+proc register() {}

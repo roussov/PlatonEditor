@@ -1,0 +1,152 @@
+space platon.editor.config.settings.telemetry.telemetry
+
+<<< Settings Telemetry Engine ULTRA MAX >>>
+<<< Opt-in only, anonymized metrics, batching, rate limiting, versioned >>>
+
+form TelemetryEvent {
+    name : string
+    value : string
+}
+
+form TelemetryConfig {
+    enabled : bool
+    batch_size : int
+    rate_limit : int
+}
+
+form TelemetryState {
+    version : int
+    events_count : int
+    batches_sent : int
+    dropped_events : int
+}
+
+const MAX_EVENTS : int = 4096
+
+let config = TelemetryConfig {
+    enabled: false,
+    batch_size: 50,
+    rate_limit: 100
+}
+
+let state = TelemetryState {
+    version: 1,
+    events_count: 0,
+    batches_sent: 0,
+    dropped_events: 0
+}
+
+<<< Internal version bump >>>
+
+proc bump_telemetry_version() {
+    set state.version = state.version + 1
+}
+
+<<< Enable telemetry explicitly >>>
+
+proc enable_telemetry() {
+    set config.enabled = true
+    bump_telemetry_version()
+}
+
+<<< Disable telemetry >>>
+
+proc disable_telemetry() {
+    set config.enabled = false
+    bump_telemetry_version()
+}
+
+<<< Record telemetry event >>>
+
+proc record_event(name : string, value : string) {
+
+    if not config.enabled {
+        return
+    }
+
+    if state.events_count >= MAX_EVENTS {
+        set state.dropped_events = state.dropped_events + 1
+        return
+    }
+
+    <<< Real engine would anonymize and queue event >>>
+
+    set state.events_count = state.events_count + 1
+
+    if state.events_count >= config.batch_size {
+        flush_batch()
+    }
+}
+
+<<< Flush telemetry batch stub >>>
+
+proc flush_batch() {
+
+    if not config.enabled {
+        return
+    }
+
+    <<< Real engine would send batch securely over HTTPS >>>
+
+    set state.batches_sent = state.batches_sent + 1
+    set state.events_count = 0
+}
+
+<<< Snapshot telemetry version >>>
+
+proc current_telemetry_version() -> int {
+    return state.version
+}
+
+<<< Reset telemetry state >>>
+
+proc reset_telemetry() {
+
+    set state.events_count = 0
+    set state.batches_sent = 0
+    set state.dropped_events = 0
+
+    bump_telemetry_version()
+}
+
+<<< Stress event recording >>>
+
+proc stress_telemetry(iterations : int) {
+
+    enable_telemetry()
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        record_event("setting.change", "editor.theme")
+
+        set i = i + 1
+    }
+
+    disable_telemetry()
+}
+
+<<< Stress rate simulation >>>
+
+proc stress_rate_limit(iterations : int) {
+
+    enable_telemetry()
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        record_event("rapid.event", "x")
+
+        set i = i + 1
+    }
+
+    disable_telemetry()
+}

@@ -1,0 +1,216 @@
+space platon.editor.config.keybindings.tests.mode
+
+# Mode Engine ULTRA MAX++ Test Suite# Covers mode switching, context matching, isolation, stress and fuzz
+form Context {
+    mode : string
+    has_selection : bool
+    is_readonly : bool
+    in_terminal : bool
+    in_search : bool
+}
+
+form Condition {
+    require_mode : string
+    require_selection : bool
+    require_writable : bool
+    require_terminal : bool
+}
+
+proc assert_true(cond : bool) {
+    if not cond {
+        panic()
+    }
+}
+
+proc assert_false(cond : bool) {
+    if cond {
+        panic()
+    }
+}
+
+proc assert_eq_str(a : string, b : string) {
+    if a != b {
+        panic()
+    }
+}
+
+proc new_context(mode : string) -> Context {
+    return Context {
+        mode: mode,
+        has_selection: false,
+        is_readonly: false,
+        in_terminal: false,
+        in_search: false
+    }
+}
+
+# Basic mode equality test
+proc test_mode_basic() {
+
+    let ctx = new_context("normal")
+
+    assert_eq_str(ctx.mode, "normal")
+}
+
+# Mode switch test
+proc test_mode_switch() {
+
+    let ctx = new_context("normal")
+
+    ctx.mode = "insert"
+
+    assert_eq_str(ctx.mode, "insert")
+}
+
+# Condition matching test
+proc test_condition_match() {
+
+    let ctx = new_context("normal")
+
+    let cond = Condition {
+        require_mode: "normal",
+        require_selection: false,
+        require_writable: false,
+        require_terminal: false
+    }
+
+    assert_true(matches_condition(ctx, cond))
+}
+
+# Condition reject wrong mode
+proc test_condition_wrong_mode() {
+
+    let ctx = new_context("insert")
+
+    let cond = Condition {
+        require_mode: "normal",
+        require_selection: false,
+        require_writable: false,
+        require_terminal: false
+    }
+
+    assert_false(matches_condition(ctx, cond))
+}
+
+# Selection requirement test
+proc test_selection_requirement() {
+
+    let ctx = new_context("normal")
+    ctx.has_selection = true
+
+    let cond = Condition {
+        require_mode: "",
+        require_selection: true,
+        require_writable: false,
+        require_terminal: false
+    }
+
+    assert_true(matches_condition(ctx, cond))
+}
+
+# Readonly rejection test
+proc test_readonly_rejection() {
+
+    let ctx = new_context("normal")
+    ctx.is_readonly = true
+
+    let cond = Condition {
+        require_mode: "",
+        require_selection: false,
+        require_writable: true,
+        require_terminal: false
+    }
+
+    assert_false(matches_condition(ctx, cond))
+}
+
+# Terminal requirement test
+proc test_terminal_requirement() {
+
+    let ctx = new_context("normal")
+    ctx.in_terminal = true
+
+    let cond = Condition {
+        require_mode: "",
+        require_selection: false,
+        require_writable: false,
+        require_terminal: true
+    }
+
+    assert_true(matches_condition(ctx, cond))
+}
+
+# Mode isolation test
+proc test_mode_isolation() {
+
+    let normal_ctx = new_context("normal")
+    let insert_ctx = new_context("insert")
+
+    assert_false(normal_ctx.mode == insert_ctx.mode)
+}
+
+# Fuzz mode switching
+proc test_fuzz_mode_switch(iterations : int) {
+
+    let ctx = new_context("normal")
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        if (i % 2) == 0 {
+            ctx.mode = "normal"
+        } else {
+            ctx.mode = "insert"
+        }
+
+        set i = i + 1
+    }
+
+    assert_true(true)
+}
+
+# Heavy stress context matching
+proc test_stress_context(iterations : int) {
+
+    let ctx = new_context("normal")
+
+    let cond = Condition {
+        require_mode: "normal",
+        require_selection: false,
+        require_writable: false,
+        require_terminal: false
+    }
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        matches_condition(ctx, cond)
+
+        set i = i + 1
+    }
+
+    assert_true(true)
+}
+
+# Master runner
+proc run_mode_tests_ultra() {
+
+    test_mode_basic()
+    test_mode_switch()
+    test_condition_match()
+    test_condition_wrong_mode()
+    test_selection_requirement()
+    test_readonly_rejection()
+    test_terminal_requirement()
+    test_mode_isolation()
+    test_fuzz_mode_switch(50000)
+    test_stress_context(100000)
+}

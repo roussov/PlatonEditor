@@ -1,0 +1,2 @@
+# bash ast module
+proc ast_entry() { }

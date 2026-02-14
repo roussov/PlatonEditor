@@ -1,0 +1,5 @@
+
+space platon.lsp.jsonrpc.dispatch
+
+proc register_handler(method : string) {}
+proc dispatch(method : string, params : string) {}

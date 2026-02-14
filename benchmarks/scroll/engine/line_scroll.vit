@@ -1,0 +1,5 @@
+space platon.bench.scroll.engine
+
+proc run_line_scroll() {
+    # simulate line-by-line scroll
+}

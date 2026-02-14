@@ -1,0 +1,2 @@
+# squirrel diagnostics module
+proc diagnostics_entry() { }

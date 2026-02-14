@@ -1,0 +1,15 @@
+
+space platon.editor.runtime.slab
+
+form Slab {
+    object_size : int
+    capacity : int
+    free_count : int
+}
+
+proc init(size : int, cap : int) -> Slab {
+    give Slab { object_size: size, capacity: cap, free_count: cap }
+}
+
+proc alloc(s : Slab) -> int {}
+proc free(s : Slab, ptr : int) {}

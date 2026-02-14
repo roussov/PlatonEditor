@@ -1,0 +1,2 @@
+# makefile semantic module
+proc semantic_entry() { }

@@ -1,0 +1,96 @@
+space platon.editor.config.colors.bench
+
+# ------------------------------------------------------------
+# Color model
+# ------------------------------------------------------------
+
+form Color {
+    r : int
+    g : int
+    b : int
+}
+
+# ------------------------------------------------------------
+# WCAG luminance (integer approximation BT.709)
+# L = 0.2126R + 0.7152G + 0.0722B
+# Scaled ×10000 to avoid floats
+# ------------------------------------------------------------
+
+proc luminance(c : Color) -> int {
+    return (c.r * 2126 + c.g * 7152 + c.b * 722) / 10000
+}
+
+# ------------------------------------------------------------
+# Contrast ratio (scaled ×100 for precision)
+# Formula:
+# (L1 + 0.05) / (L2 + 0.05)
+# Using +5 instead of +0.05 with scaled integers
+# ------------------------------------------------------------
+
+proc contrast_ratio(a : Color, b : Color) -> int {
+    let la = luminance(a)
+    let lb = luminance(b)
+
+    if la > lb {
+        return (la + 5) * 100 / (lb + 5)
+    } else {
+        return (lb + 5) * 100 / (la + 5)
+    }
+}
+
+# ------------------------------------------------------------
+# Bench: Dark theme
+# ------------------------------------------------------------
+
+proc bench_dark_theme() {
+    let background = Color { r: 24, g: 26, b: 31 }
+    let foreground = Color { r: 230, g: 230, b: 230 }
+
+    contrast_ratio(background, foreground)
+}
+
+# ------------------------------------------------------------
+# Bench: Light theme
+# ------------------------------------------------------------
+
+proc bench_light_theme() {
+    let background = Color { r: 250, g: 250, b: 250 }
+    let foreground = Color { r: 35, g: 35, b: 35 }
+
+    contrast_ratio(background, foreground)
+}
+
+# ------------------------------------------------------------
+# Bench: Palette batch
+# ------------------------------------------------------------
+
+proc bench_palette_batch() {
+    let base = Color { r: 120, g: 130, b: 150 }
+
+    contrast_ratio(base, Color { r: 255, g: 255, b: 255 })
+    contrast_ratio(base, Color { r: 0, g: 0, b: 0 })
+    contrast_ratio(base, Color { r: 200, g: 80, b: 80 })
+    contrast_ratio(base, Color { r: 80, g: 200, b: 80 })
+    contrast_ratio(base, Color { r: 80, g: 80, b: 200 })
+}
+
+# ------------------------------------------------------------
+# Bench: Stress 100k comparisons
+# ------------------------------------------------------------
+
+proc bench_stress_100k() {
+    let i = 0
+
+    loop {
+        if i >= 100000 {
+            break
+        }
+
+        contrast_ratio(
+            Color { r: i % 255, g: (i * 2) % 255, b: (i * 3) % 255 },
+            Color { r: (i * 4) % 255, g: (i * 5) % 255, b: (i * 6) % 255 }
+        )
+
+        set i = i + 1
+    }
+}

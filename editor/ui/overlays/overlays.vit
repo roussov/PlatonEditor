@@ -1,0 +1,10 @@
+
+space platon.editor.ui.overlays
+
+form Overlay {
+    id : string
+    visible : bool
+}
+
+proc show(id : string) {}
+proc hide(id : string) {}

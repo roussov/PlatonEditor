@@ -1,0 +1,4 @@
+space platon.editor.core.buffer.multi
+
+proc register_buffer() {}
+proc switch_buffer(id : int) {}

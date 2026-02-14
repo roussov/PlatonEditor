@@ -1,0 +1,7 @@
+space platon.languages.assembly
+
+form AssemblyConfig {
+    tier : string
+}
+
+proc register() {}

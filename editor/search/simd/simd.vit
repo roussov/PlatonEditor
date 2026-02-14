@@ -1,0 +1,14 @@
+
+space platon.editor.search.simd
+
+form SIMDFeatures {
+    avx2 : bool
+    avx512 : bool
+    neon : bool
+}
+
+proc detect() -> SIMDFeatures {
+    give SIMDFeatures { avx2: false, avx512: false, neon: false }
+}
+
+proc find(text : string, pattern : string) -> int {}

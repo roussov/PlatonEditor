@@ -1,0 +1,171 @@
+space platon.editor.config.settings.cloud.sync
+
+# Cloud Settings Sync Engine ULTRA MAX# Versioned, diff-based, conflict-safe, snapshot-aware, resumable
+form CloudState {
+    local_version : int
+    remote_version : int
+    syncing : bool
+    last_error : string
+}
+
+form SyncResult {
+    success : bool
+    pushed : int
+    pulled : int
+    conflict : bool
+}
+
+form SettingsSnapshot {
+    version : int
+    count : int
+}
+
+const MAX_PUSH_BATCH : int = 512
+const MAX_PULL_BATCH : int = 512
+
+let global_cloud_state = CloudState {
+    local_version: 1,
+    remote_version: 1,
+    syncing: false,
+    last_error: ""
+}
+
+# Internal version bump
+proc bump_local_version() {
+    global_cloud_state.local_version =
+        global_cloud_state.local_version + 1
+}
+
+# Begin sync session
+proc begin_sync() -> bool {
+
+    if global_cloud_state.syncing {
+        return false
+    }
+
+    global_cloud_state.syncing = true
+    return true
+}
+
+# End sync session
+proc end_sync() {
+    global_cloud_state.syncing = false
+}
+
+# Detect version conflict
+proc detect_version_conflict() -> bool {
+
+    return global_cloud_state.local_version
+        != global_cloud_state.remote_version
+}
+
+# Push local changes to remote stub
+proc push_changes(batch_size : int) -> int {
+
+    if batch_size > MAX_PUSH_BATCH {
+        return 0
+    }
+
+# Real engine serializes diff and sends to cloud
+    return batch_size
+}
+
+# Pull remote changes stub
+proc pull_changes(batch_size : int) -> int {
+
+    if batch_size > MAX_PULL_BATCH {
+        return 0
+    }
+
+# Real engine fetches remote diff and applies locally
+    return batch_size
+}
+
+# Perform full sync cycle
+proc perform_sync() -> SyncResult {
+
+    if not begin_sync() {
+        return SyncResult {
+            success: false,
+            pushed: 0,
+            pulled: 0,
+            conflict: true
+        }
+    }
+
+    let conflict = detect_version_conflict()
+
+    let pushed = 0
+    let pulled = 0
+
+    if not conflict {
+        set pushed = push_changes(32)
+        set pulled = pull_changes(32)
+        bump_local_version()
+        global_cloud_state.remote_version =
+            global_cloud_state.local_version
+    }
+
+    end_sync()
+
+    return SyncResult {
+        success: not conflict,
+        pushed: pushed,
+        pulled: pulled,
+        conflict: conflict
+    }
+}
+
+# Snapshot comparison
+proc snapshot_changed(local : SettingsSnapshot) -> bool {
+
+    return local.version != global_cloud_state.local_version
+}
+
+# Force remote version mismatch for testing
+proc simulate_remote_change() {
+    global_cloud_state.remote_version =
+        global_cloud_state.remote_version + 1
+}
+
+# Reset cloud state
+proc reset_cloud_state() {
+
+    global_cloud_state.local_version = 1
+    global_cloud_state.remote_version = 1
+    global_cloud_state.syncing = false
+    global_cloud_state.last_error = ""
+}
+
+# Stress sync cycles
+proc stress_sync(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        perform_sync()
+
+        set i = i + 1
+    }
+}
+
+# Heavy conflict simulation
+proc stress_conflict(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        simulate_remote_change()
+        perform_sync()
+
+        set i = i + 1
+    }
+}

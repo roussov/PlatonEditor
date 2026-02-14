@@ -1,0 +1,7 @@
+space platon.languages.reasonml
+
+form ReasonmlConfig {
+    category : string
+}
+
+proc register() {}

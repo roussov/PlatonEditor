@@ -1,0 +1,2 @@
+# rebol lexer module
+proc lexer_entry() { }

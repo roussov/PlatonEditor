@@ -1,0 +1,4 @@
+space platon.languages.vitte.lsp
+
+proc completion() {}
+proc hover() {}

@@ -1,0 +1,2 @@
+# xml ast module
+proc ast_entry() { }

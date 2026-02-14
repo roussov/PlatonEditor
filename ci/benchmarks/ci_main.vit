@@ -1,0 +1,9 @@
+space platon.ci.benchmarks
+
+pull platon.ci.benchmarks.runners.master_runner
+pull platon.ci.benchmarks.report.summary
+
+entry ci_bench at platon.ci.benchmarks {
+    master_runner.run_all()
+    summary.generate()
+}

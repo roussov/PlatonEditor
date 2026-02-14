@@ -1,0 +1,6 @@
+space platon.editor.core.buffer.gap
+
+form GapBuffer {
+    gap_start : int
+    gap_end : int
+}

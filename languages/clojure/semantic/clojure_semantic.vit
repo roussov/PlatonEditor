@@ -1,0 +1,2 @@
+# clojure semantic module
+proc semantic_entry() { }

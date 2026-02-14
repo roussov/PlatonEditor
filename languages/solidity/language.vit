@@ -1,0 +1,7 @@
+space platon.languages.solidity
+
+form SolidityConfig {
+    tier : string
+}
+
+proc register() {}

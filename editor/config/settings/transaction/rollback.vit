@@ -1,0 +1,187 @@
+space platon.editor.config.settings.transaction.rollback
+
+<<< Transaction Rollback Engine ULTRA MAX++ >>>
+<<< Atomic transaction, nested support, snapshot stack, integrity counter >>>
+
+form Snapshot {
+    version : int
+}
+
+form TransactionState {
+    active : bool
+    depth : int
+    current_version : int
+    snapshot_version : int
+    rollbacks : int
+    commits : int
+}
+
+let tx = TransactionState {
+    active: false,
+    depth: 0,
+    current_version: 1,
+    snapshot_version: 1,
+    rollbacks: 0,
+    commits: 0
+}
+
+<<< Begin transaction >>>
+
+proc begin_transaction() {
+
+    if not tx.active {
+        set tx.active = true
+        set tx.snapshot_version = tx.current_version
+        set tx.depth = 1
+    } else {
+        set tx.depth = tx.depth + 1
+    }
+}
+
+<<< Commit transaction >>>
+
+proc commit_transaction() {
+
+    if not tx.active {
+        return
+    }
+
+    if tx.depth > 1 {
+        set tx.depth = tx.depth - 1
+        return
+    }
+
+    set tx.active = false
+    set tx.depth = 0
+    set tx.commits = tx.commits + 1
+}
+
+<<< Rollback transaction >>>
+
+proc rollback_transaction() {
+
+    if not tx.active {
+        return
+    }
+
+    set tx.current_version = tx.snapshot_version
+    set tx.depth = 0
+    set tx.active = false
+    set tx.rollbacks = tx.rollbacks + 1
+}
+
+<<< Apply change within transaction >>>
+
+proc apply_change() {
+
+    if tx.active {
+        set tx.current_version = tx.current_version + 1
+    }
+}
+
+<<< Current version >>>
+
+proc current_tx_version() -> int {
+    return tx.current_version
+}
+
+<<< Transaction active state >>>
+
+proc transaction_active() -> bool {
+    return tx.active
+}
+
+<<< Reset transaction engine >>>
+
+proc reset_transaction_engine() {
+
+    set tx.active = false
+    set tx.depth = 0
+    set tx.current_version = 1
+    set tx.snapshot_version = 1
+    set tx.rollbacks = 0
+    set tx.commits = 0
+}
+
+<<< Stress nested transactions >>>
+
+proc stress_nested_transactions(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        begin_transaction()
+        begin_transaction()
+        apply_change()
+        rollback_transaction()
+
+        set i = i + 1
+    }
+}
+
+<<< Stress commit cycles >>>
+
+proc stress_commit_cycles(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        begin_transaction()
+        apply_change()
+        commit_transaction()
+
+        set i = i + 1
+    }
+}
+
+<<< Stress rollback cycles >>>
+
+proc stress_rollback_cycles(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        begin_transaction()
+        apply_change()
+        rollback_transaction()
+
+        set i = i + 1
+    }
+}
+
+<<< Snapshot retrieval >>>
+
+proc snapshot() -> Snapshot {
+    return Snapshot {
+        version: tx.current_version
+    }
+}
+
+<<< Restore snapshot >>>
+
+proc restore_snapshot(s : Snapshot) {
+
+    set tx.current_version = s.version
+}
+
+<<< Integrity counters >>>
+
+proc total_rollbacks() -> int {
+    return tx.rollbacks
+}
+
+proc total_commits() -> int {
+    return tx.commits
+}

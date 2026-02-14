@@ -1,0 +1,2 @@
+# haskell lsp module
+proc lsp_entry() { }

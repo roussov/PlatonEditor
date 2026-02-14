@@ -1,0 +1,7 @@
+space platon.languages.matlab
+
+form MatlabConfig {
+    tier : string
+}
+
+proc register() {}

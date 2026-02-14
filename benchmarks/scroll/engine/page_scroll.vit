@@ -1,0 +1,5 @@
+space platon.bench.scroll.engine
+
+proc run_page_scroll() {
+    # simulate page scroll
+}

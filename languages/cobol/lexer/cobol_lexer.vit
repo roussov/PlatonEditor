@@ -1,0 +1,2 @@
+# cobol lexer module
+proc lexer_entry() { }

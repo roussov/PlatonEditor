@@ -1,0 +1,7 @@
+space platon.languages.yml
+
+form YmlConfig {
+    category : string
+}
+
+proc register() {}

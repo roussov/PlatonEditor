@@ -1,0 +1,7 @@
+space platon.languages.move
+
+form MoveConfig {
+    category : string
+}
+
+proc register() {}

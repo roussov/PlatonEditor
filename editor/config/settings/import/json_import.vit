@@ -1,0 +1,177 @@
+space platon.editor.config.settings.import.json_import
+
+<<< JSON Import Settings Engine ULTRA MAX >>>
+<<< Version aware, safe parsing stub, validation hook, layered ready, transactional >>>
+
+form ImportOptions {
+    validate_schema : bool
+    strict_mode : bool
+    target_layer : string
+}
+
+form ImportResult {
+    success : bool
+    imported_count : int
+    errors_count : int
+    version_detected : int
+}
+
+form ImportState {
+    version : int
+    last_import_count : int
+    last_error_count : int
+}
+
+let import_state = ImportState {
+    version: 1,
+    last_import_count: 0,
+    last_error_count: 0
+}
+
+<<< Internal version bump >>>
+
+proc bump_import_version() {
+    set import_state.version = import_state.version + 1
+}
+
+<<< Begin transactional import >>>
+
+proc begin_import() -> bool {
+    <<< Real engine would lock layered store >>>
+    return true
+}
+
+<<< End transactional import >>>
+
+proc end_import() {
+    bump_import_version()
+}
+
+<<< Parse JSON stub >>>
+
+proc parse_json(raw : string) -> int {
+    <<< Real engine would parse JSON properly >>>
+    return 1
+}
+
+<<< Validate imported key stub >>>
+
+proc validate_key(key : string, value : string) -> bool {
+    <<< Real engine would consult schema engine >>>
+    return true
+}
+
+<<< Apply imported key to layer stub >>>
+
+proc apply_imported_key(
+    key : string,
+    value : string,
+    target_layer : string
+) -> bool {
+
+    <<< Real engine would call layered_store.set_setting >>>
+
+    return true
+}
+
+<<< Main JSON import entry >>>
+
+proc import_json(
+    raw_json : string,
+    options : ImportOptions
+) -> ImportResult {
+
+    if not begin_import() {
+        return ImportResult {
+            success: false,
+            imported_count: 0,
+            errors_count: 1,
+            version_detected: 0
+        }
+    }
+
+    let detected_version = parse_json(raw_json)
+
+    let imported = 0
+    let errors = 0
+
+    <<< Simulated iteration over parsed key/value pairs >>>
+
+    let i = 0
+
+    loop {
+        if i >= 10 {
+            break
+        }
+
+        let key = "key"
+        let value = "value"
+
+        if options.validate_schema {
+            if not validate_key(key, value) {
+                set errors = errors + 1
+                if options.strict_mode {
+                    break
+                }
+            }
+        }
+
+        if apply_imported_key(key, value, options.target_layer) {
+            set imported = imported + 1
+        } else {
+            set errors = errors + 1
+        }
+
+        set i = i + 1
+    }
+
+    end_import()
+
+    set import_state.last_import_count = imported
+    set import_state.last_error_count = errors
+
+    return ImportResult {
+        success: errors == 0,
+        imported_count: imported,
+        errors_count: errors,
+        version_detected: detected_version
+    }
+}
+
+<<< Snapshot import version >>>
+
+proc current_import_version() -> int {
+    return import_state.version
+}
+
+<<< Reset import state >>>
+
+proc reset_import_state() {
+
+    set import_state.last_import_count = 0
+    set import_state.last_error_count = 0
+    bump_import_version()
+}
+
+<<< Stress import simulation >>>
+
+proc stress_import(iterations : int) {
+
+    let options = ImportOptions {
+        validate_schema: true,
+        strict_mode: false,
+        target_layer: "user"
+    }
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        import_json("{\"key\":\"value\"}", options)
+
+        set i = i + 1
+    }
+}

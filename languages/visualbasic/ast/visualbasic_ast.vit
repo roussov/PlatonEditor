@@ -1,0 +1,2 @@
+# visualbasic ast module
+proc ast_entry() { }

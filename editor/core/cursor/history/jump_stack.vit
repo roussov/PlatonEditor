@@ -1,0 +1,6 @@
+space platon.editor.core.cursor.history
+
+proc push_jump(pos : Position) {}
+proc pop_jump() -> Position {
+    give Position { line: 0, column: 0 }
+}

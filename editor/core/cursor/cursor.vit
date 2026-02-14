@@ -1,0 +1,13 @@
+space platon.editor.core.cursor
+
+form Cursor {
+    id : int
+    line : int
+    column : int
+    virtual_column : int
+}
+
+proc move_left(c : Cursor) {}
+proc move_right(c : Cursor) {}
+proc move_up(c : Cursor) {}
+proc move_down(c : Cursor) {}

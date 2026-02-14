@@ -1,0 +1,6 @@
+
+space platon.lsp.client.workspace
+
+proc did_open() {}
+proc did_change() {}
+proc did_close() {}

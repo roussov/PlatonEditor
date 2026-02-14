@@ -1,0 +1,7 @@
+space platon.languages.scala
+
+form ScalaConfig {
+    tier : string
+}
+
+proc register() {}

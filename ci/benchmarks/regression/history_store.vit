@@ -1,0 +1,5 @@
+space platon.ci.benchmarks.regression
+
+proc store_result() {
+    # persist benchmark history
+}

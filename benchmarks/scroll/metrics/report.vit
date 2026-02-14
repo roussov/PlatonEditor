@@ -1,0 +1,5 @@
+space platon.bench.scroll.metrics
+
+proc generate() {
+    # generate scroll benchmark report
+}

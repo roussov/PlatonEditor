@@ -1,0 +1,7 @@
+space platon.languages.cmake
+
+form CmakeConfig {
+    category : string
+}
+
+proc register() {}

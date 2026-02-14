@@ -1,0 +1,2 @@
+# idris2 ast module
+proc ast_entry() { }

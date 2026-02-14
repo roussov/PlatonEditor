@@ -1,0 +1,9 @@
+
+space platon.lsp.servers.session
+
+form Session {
+    id : string
+}
+
+proc create_session() {}
+proc close_session(id : string) {}

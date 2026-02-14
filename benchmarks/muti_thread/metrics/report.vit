@@ -1,0 +1,5 @@
+space platon.bench.multi_thread.metrics
+
+proc generate() {
+    # generate JSON/CSV report
+}

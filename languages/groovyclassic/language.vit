@@ -1,0 +1,7 @@
+space platon.languages.groovyclassic
+
+form GroovyclassicConfig {
+    category : string
+}
+
+proc register() {}

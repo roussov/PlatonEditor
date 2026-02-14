@@ -1,0 +1,5 @@
+
+space platon.lsp.transport.ipc
+
+proc open_channel(name : string) {}
+proc send_ipc(msg : string) {}

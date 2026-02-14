@@ -1,0 +1,10 @@
+
+space platon.editor.runtime.scheduler
+
+form Scheduler {
+    running : bool
+}
+
+proc start(s : Scheduler) {}
+proc stop(s : Scheduler) {}
+proc schedule(task_id : int) {}

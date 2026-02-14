@@ -1,0 +1,7 @@
+space platon.languages.kotlin
+
+form KotlinConfig {
+    tier : string
+}
+
+proc register() {}

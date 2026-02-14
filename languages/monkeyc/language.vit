@@ -1,0 +1,7 @@
+space platon.languages.monkeyc
+
+form MonkeycConfig {
+    category : string
+}
+
+proc register() {}

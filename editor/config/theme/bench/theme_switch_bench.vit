@@ -1,0 +1,195 @@
+space platon.editor.config.theme.bench.theme_switch_bench
+
+<<< Theme Switch Benchmark Engine ULTRA MAX++ >>>
+<<< Measures full theme swap cost, cache invalidation, token recolor, stress cycles >>>
+
+form ThemeSwitchMetrics {
+    switches : int
+    tokens_recolored : int
+    cache_invalidations : int
+    total_time_units : int
+    max_switch_cost : int
+}
+
+form ThemeSwitchState {
+    version : int
+    current_theme : string
+    last_switch_cost : int
+}
+
+let switch_state = ThemeSwitchState {
+    version: 1,
+    current_theme: "dark",
+    last_switch_cost: 0
+}
+
+<<< Simulate token recolor cost >>>
+
+proc recolor_tokens(token_count : int) -> int {
+
+    let cost = 0
+    let i = 0
+
+    loop {
+        if i >= token_count {
+            break
+        }
+
+        set cost = cost + 1
+        set i = i + 1
+    }
+
+    return cost
+}
+
+<<< Simulate cache invalidation cost >>>
+
+proc invalidate_cache(entries : int) -> int {
+
+    let cost = 0
+    let i = 0
+
+    loop {
+        if i >= entries {
+            break
+        }
+
+        set cost = cost + 1
+        set i = i + 1
+    }
+
+    return cost
+}
+
+<<< Perform theme switch >>>
+
+proc switch_theme(new_theme : string, tokens : int, cache_entries : int) -> int {
+
+    let recolor_cost = recolor_tokens(tokens)
+    let cache_cost = invalidate_cache(cache_entries)
+
+    let total = recolor_cost + cache_cost
+
+    set switch_state.current_theme = new_theme
+    set switch_state.last_switch_cost = total
+    set switch_state.version = switch_state.version + 1
+
+    return total
+}
+
+<<< Benchmark single switch >>>
+
+proc bench_single_switch(tokens : int, cache_entries : int) -> ThemeSwitchMetrics {
+
+    let cost = switch_theme("light", tokens, cache_entries)
+
+    return ThemeSwitchMetrics {
+        switches: 1,
+        tokens_recolored: tokens,
+        cache_invalidations: cache_entries,
+        total_time_units: cost,
+        max_switch_cost: cost
+    }
+}
+
+<<< Benchmark repeated switches >>>
+
+proc bench_repeated_switches(
+    iterations : int,
+    tokens : int,
+    cache_entries : int
+) -> ThemeSwitchMetrics {
+
+    let i = 0
+    let total_cost = 0
+    let max_cost = 0
+    let total_tokens = 0
+    let total_cache = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        let theme_name = "dark"
+
+        if i % 2 == 0 {
+            set theme_name = "light"
+        }
+
+        let cost = switch_theme(theme_name, tokens, cache_entries)
+
+        set total_cost = total_cost + cost
+        set total_tokens = total_tokens + tokens
+        set total_cache = total_cache + cache_entries
+
+        if cost > max_cost {
+            set max_cost = cost
+        }
+
+        set i = i + 1
+    }
+
+    return ThemeSwitchMetrics {
+        switches: iterations,
+        tokens_recolored: total_tokens,
+        cache_invalidations: total_cache,
+        total_time_units: total_cost,
+        max_switch_cost: max_cost
+    }
+}
+
+<<< Stress fast toggling >>>
+
+proc stress_fast_toggle(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        switch_theme("dark", 10000, 5000)
+        switch_theme("light", 10000, 5000)
+
+        set i = i + 1
+    }
+}
+
+<<< Stress massive project switch >>>
+
+proc stress_massive_project(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        bench_repeated_switches(
+            5,
+            250000,
+            100000
+        )
+
+        set i = i + 1
+    }
+}
+
+<<< Snapshot switch version >>>
+
+proc current_theme_switch_version() -> int {
+    return switch_state.version
+}
+
+<<< Full benchmark suite >>>
+
+proc run_theme_switch_bench_ultra() {
+
+    bench_single_switch(5000, 2000)
+    bench_repeated_switches(50, 10000, 5000)
+    stress_fast_toggle(200)
+    stress_massive_project(20)
+}

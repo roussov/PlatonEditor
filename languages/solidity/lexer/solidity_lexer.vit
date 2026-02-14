@@ -1,0 +1,2 @@
+# solidity lexer module
+proc lexer_entry() { }

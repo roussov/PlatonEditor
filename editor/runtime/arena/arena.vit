@@ -1,0 +1,16 @@
+space platon.editor.runtime.arena
+
+form Arena {
+    capacity : int
+    offset : int
+}
+
+proc init(cap : int) -> Arena {
+    give Arena { capacity: cap, offset: 0 }
+}
+
+proc alloc(a : Arena, size : int) -> int {
+    give 0
+}
+
+proc reset(a : Arena) {}

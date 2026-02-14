@@ -1,0 +1,14 @@
+
+space platon.editor.runtime.thread_pool
+
+form ThreadPool {
+    size : int
+    running : bool
+}
+
+proc init(size : int) -> ThreadPool {
+    give ThreadPool { size: size, running: true }
+}
+
+proc submit(pool : ThreadPool, task_id : int) {}
+proc shutdown(pool : ThreadPool) {}

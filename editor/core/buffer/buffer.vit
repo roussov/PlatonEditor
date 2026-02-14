@@ -1,0 +1,12 @@
+space platon.editor.core.buffer
+
+form Buffer {
+    id : int
+    length : int
+}
+
+proc insert(b : Buffer, pos : int, text : string) {}
+proc delete(b : Buffer, start : int, end : int) {}
+proc slice(b : Buffer, start : int, end : int) -> string {
+    give ""
+}

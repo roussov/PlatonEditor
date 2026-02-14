@@ -1,0 +1,5 @@
+space platon.editor.core.gap.resize
+
+proc expand(gap_size : int) {
+    # expand buffer capacity
+}

@@ -1,0 +1,9 @@
+space platon.languages.vitte
+
+form VitteConfig {
+    version : string
+    legacy_mode : bool
+}
+
+proc register() {}
+proc capabilities() {}

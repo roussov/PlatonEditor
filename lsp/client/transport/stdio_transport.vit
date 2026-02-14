@@ -1,0 +1,6 @@
+
+space platon.lsp.client.transport
+
+proc start_stdio() {}
+proc read_loop() {}
+proc write_message(msg : string) {}

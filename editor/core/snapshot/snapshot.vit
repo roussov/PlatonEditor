@@ -1,0 +1,13 @@
+space platon.editor.core.snapshot
+
+form Snapshot {
+    id : int
+    root_node : int
+    timestamp_ns : int
+}
+
+proc create(root : int) -> Snapshot {
+    give Snapshot { id: 0, root_node: root, timestamp_ns: 0 }
+}
+
+proc restore(id : int) {}

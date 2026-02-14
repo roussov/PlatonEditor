@@ -1,0 +1,2 @@
+# terraform ast module
+proc ast_entry() { }

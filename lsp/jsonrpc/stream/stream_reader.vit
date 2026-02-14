@@ -1,0 +1,4 @@
+
+space platon.lsp.jsonrpc.stream
+
+proc read_stream() {}

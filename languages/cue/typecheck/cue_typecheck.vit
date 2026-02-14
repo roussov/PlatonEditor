@@ -1,0 +1,2 @@
+# cue typecheck module
+proc typecheck_entry() { }

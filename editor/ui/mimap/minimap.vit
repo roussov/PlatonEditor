@@ -1,0 +1,13 @@
+
+space platon.editor.ui.minimap
+
+form Minimap {
+    width : int
+    height : int
+}
+
+proc init(w : int, h : int) -> Minimap {
+    give Minimap { width: w, height: h }
+}
+
+proc update() {}

@@ -1,0 +1,4 @@
+space platon.editor.debug.dap.transport
+
+proc parse_message(msg : string) {}
+proc send_response(id : int, body : string) {}

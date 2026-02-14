@@ -1,0 +1,18 @@
+
+space platon.lsp.jsonrpc.types
+
+form Request {
+    id : int
+    method : string
+    params : string
+}
+
+form Response {
+    id : int
+    result : string
+}
+
+form Error {
+    code : int
+    message : string
+}

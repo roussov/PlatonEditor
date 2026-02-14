@@ -1,0 +1,7 @@
+space platon.languages.fsharp
+
+form FsharpConfig {
+    category : string
+}
+
+proc register() {}

@@ -1,0 +1,5 @@
+
+space platon.lsp.transport.multiplex
+
+proc open_stream(id : int) {}
+proc close_stream(id : int) {}

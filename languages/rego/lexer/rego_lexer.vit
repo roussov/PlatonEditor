@@ -1,0 +1,2 @@
+# rego lexer module
+proc lexer_entry() { }

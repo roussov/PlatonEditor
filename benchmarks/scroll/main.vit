@@ -1,0 +1,9 @@
+space platon.bench.scroll
+
+pull platon.bench.scroll.runners.master_runner
+pull platon.bench.scroll.metrics.report
+
+entry bench at platon.bench.scroll {
+    master_runner.run_all()
+    report.generate()
+}

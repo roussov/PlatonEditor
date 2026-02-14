@@ -1,0 +1,2 @@
+# coldfusion formatter module
+proc formatter_entry() { }

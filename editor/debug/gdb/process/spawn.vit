@@ -1,0 +1,5 @@
+space platon.editor.debug.gdb.process
+
+proc start_gdb(path : string) {}
+proc attach(pid : int) {}
+proc stop() {}

@@ -1,0 +1,2 @@
+# odin semantic module
+proc semantic_entry() { }

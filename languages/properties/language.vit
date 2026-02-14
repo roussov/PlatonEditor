@@ -1,0 +1,7 @@
+space platon.languages.properties
+
+form PropertiesConfig {
+    category : string
+}
+
+proc register() {}

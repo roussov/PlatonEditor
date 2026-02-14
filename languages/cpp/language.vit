@@ -1,0 +1,7 @@
+space platon.languages.cpp
+
+form CppConfig {
+    tier : string
+}
+
+proc register() {}

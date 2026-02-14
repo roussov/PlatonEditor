@@ -1,0 +1,7 @@
+space platon.languages.python
+
+form PythonConfig {
+    tier : string
+}
+
+proc register() {}

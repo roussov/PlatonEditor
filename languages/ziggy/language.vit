@@ -1,0 +1,7 @@
+space platon.languages.ziggy
+
+form ZiggyConfig {
+    category : string
+}
+
+proc register() {}

@@ -1,0 +1,13 @@
+space platon.editor.debug.breakpoints
+
+form Breakpoint {
+    id : int
+    file : string
+    line : int
+    condition : string
+    enabled : bool
+}
+
+proc add(bp : Breakpoint) {}
+proc remove(id : int) {}
+proc toggle(id : int) {}

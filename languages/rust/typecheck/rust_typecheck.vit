@@ -1,0 +1,2 @@
+# rust typecheck module
+proc typecheck_entry() { }

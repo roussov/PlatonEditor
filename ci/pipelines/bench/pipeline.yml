@@ -1,0 +1,9 @@
+
+name: Benchmark Pipeline
+stages:
+  - startup
+  - file_open
+  - scroll
+  - search
+  - highlight
+  - stress

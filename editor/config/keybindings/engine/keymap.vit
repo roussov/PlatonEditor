@@ -1,0 +1,121 @@
+space platon.editor.config.keybindings.engine.keymap
+
+# Keymap Engine MAX# Central registry, mode aware, context aware, conflict safe
+form KeyStroke {
+    code : int
+    ctrl : bool
+    alt  : bool
+    shift : bool
+}
+
+form Binding {
+    mode : string
+    steps_count : int
+    command : string
+    priority : int
+}
+
+form Keymap {
+    bindings_count : int
+    version : int
+}
+
+const MAX_BINDINGS : int = 2048
+
+let global_keymap = Keymap {
+    bindings_count: 0,
+    version: 0
+}
+
+# Helpers
+proc next_version() -> int {
+    global_keymap.version = global_keymap.version + 1
+    return global_keymap.version
+}
+
+# Register binding
+proc register_binding(
+    mode : string,
+    command : string,
+    steps : int,
+    priority : int
+) -> bool {
+
+    if global_keymap.bindings_count >= MAX_BINDINGS {
+        return false
+    }
+
+    global_keymap.bindings_count =
+        global_keymap.bindings_count + 1
+
+    next_version()
+    return true
+}
+
+# Unregister binding
+proc unregister_binding() {
+
+    if global_keymap.bindings_count > 0 {
+        global_keymap.bindings_count =
+            global_keymap.bindings_count - 1
+
+        next_version()
+    }
+}
+
+# Resolve binding stub
+proc resolve_binding(
+    mode : string,
+    steps : int
+) -> string {
+
+    if global_keymap.bindings_count == 0 {
+        return ""
+    }
+
+# Real engine would scan trie or indexed table
+    return "command.executed"
+}
+
+# Snapshot version access
+proc keymap_version() -> int {
+    return global_keymap.version
+}
+
+# Clear all bindings
+proc clear_keymap() {
+    global_keymap.bindings_count = 0
+    next_version()
+}
+
+# Stress registration
+proc stress_register(count : int) {
+
+    let i = 0
+
+    loop {
+        if i >= count {
+            break
+        }
+
+        register_binding("normal", "cmd", 2, 0)
+
+        set i = i + 1
+    }
+}
+
+# Stress resolve
+proc stress_resolve(count : int) {
+
+    let i = 0
+
+    loop {
+        if i >= count {
+            break
+        }
+
+        resolve_binding("normal", 2)
+
+        set i = i + 1
+    }
+}

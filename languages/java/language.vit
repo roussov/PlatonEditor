@@ -1,0 +1,7 @@
+space platon.languages.java
+
+form JavaConfig {
+    tier : string
+}
+
+proc register() {}

@@ -1,0 +1,7 @@
+space platon.languages.fortran
+
+form FortranConfig {
+    tier : string
+}
+
+proc register() {}

@@ -1,0 +1,7 @@
+space platon.editor.core.buffer.rope
+
+form RopeNode {
+    left : int
+    right : int
+    weight : int
+}

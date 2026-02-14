@@ -1,0 +1,11 @@
+
+space platon.editor.lang_engine.symbol_table
+
+form Symbol {
+    id : int
+    name : string
+    kind : string
+}
+
+proc define(sym : Symbol) {}
+proc resolve(name : string) {}

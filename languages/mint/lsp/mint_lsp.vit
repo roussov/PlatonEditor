@@ -1,0 +1,2 @@
+# mint lsp module
+proc lsp_entry() { }

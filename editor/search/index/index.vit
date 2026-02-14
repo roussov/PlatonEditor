@@ -1,0 +1,10 @@
+
+space platon.editor.search.index
+
+form Posting {
+    doc_id : int
+    position : int
+}
+
+proc add_term(term : string, doc_id : int, pos : int) {}
+proc search(term : string) -> Posting {}

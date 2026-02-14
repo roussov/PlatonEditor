@@ -1,0 +1,2 @@
+# pony semantic module
+proc semantic_entry() { }

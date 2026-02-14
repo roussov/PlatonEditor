@@ -1,0 +1,11 @@
+
+space platon.editor.lang_engine.precedence
+
+form Operator {
+    symbol : string
+    precedence : int
+    associativity : string
+}
+
+proc register(op : Operator) {}
+proc resolve(symbol : string) {}

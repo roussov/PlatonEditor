@@ -1,0 +1,5 @@
+
+space platon.lsp.client.rpc
+
+proc encode_request(id : int, method : string) {}
+proc decode_message(raw : string) {}

@@ -1,0 +1,5 @@
+
+space platon.lsp.client.transport
+
+proc connect(host : string, port : int) {}
+proc send(msg : string) {}

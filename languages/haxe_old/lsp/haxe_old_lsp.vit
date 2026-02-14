@@ -1,0 +1,2 @@
+# haxe_old lsp module
+proc lsp_entry() { }

@@ -1,0 +1,161 @@
+!muf 4
+;; ============================================================
+;; steelconf — PlatonEditor (full)
+;; Engine: local vitte compiler
+;; ============================================================
+
+[workspace]
+  .set name "PlatonEditor"
+  .set root "."
+  .set target_dir "build"
+  .set profile "debug"
+..
+
+[profile debug]
+  .set opt 0
+  .set debug 1
+..
+
+[profile release]
+  .set opt 2
+  .set debug 0
+..
+
+[tool vitte]
+  .exec "/Users/vincent/Documents/Github/vitte/bin/vitte"
+..
+
+[tool sh]
+  .exec "sh"
+..
+
+;; ------------------------------------------------------------
+;; Bootstrap / diagnostics
+;; ------------------------------------------------------------
+
+[bake dirs]
+  [run sh]
+    .set "-c" "mkdir -p build build/logs build/bin build/cpp"
+  ..
+  .output marker "build/.dirs.ok"
+..
+
+[bake doctor]
+  [run vitte]
+    .set doctor 1
+  ..
+  .output marker "build/.doctor.ok"
+..
+
+[bake list_sources]
+  [run sh]
+    .set "-c" "mkdir -p build; find . -type f -name '*.vit' ! -path './.git/*' | sort > build/sources.vit.list"
+  ..
+  .output marker "build/.sources.ok"
+..
+
+;; ------------------------------------------------------------
+;; Static pipeline
+;; ------------------------------------------------------------
+
+[bake parse_all]
+  [run sh]
+    .set "-c" "set -e; mkdir -p build/logs; : > build/logs/parse_all.log; find . -type f -name '*.vit' ! -path './.git/*' | sort | while IFS= read -r f; do echo \"[parse] $f\" >> build/logs/parse_all.log; /Users/vincent/Documents/Github/vitte/bin/vitte parse --parse-silent \"$f\" >> build/logs/parse_all.log 2>&1; done"
+  ..
+  .output marker "build/.parse_all.ok"
+..
+
+[bake parse_strict_all]
+  [run sh]
+    .set "-c" "set -e; mkdir -p build/logs; : > build/logs/parse_strict_all.log; find . -type f -name '*.vit' ! -path './.git/*' | sort | while IFS= read -r f; do echo \"[parse-strict] $f\" >> build/logs/parse_strict_all.log; /Users/vincent/Documents/Github/vitte/bin/vitte parse --strict-parse --parse-silent \"$f\" >> build/logs/parse_strict_all.log 2>&1; done"
+  ..
+  .output marker "build/.parse_strict_all.ok"
+..
+
+[bake check_all]
+  [run sh]
+    .set "-c" "set -e; mkdir -p build/logs; : > build/logs/check_all.log; find . -type f -name '*.vit' ! -path './.git/*' | sort | while IFS= read -r f; do echo \"[check] $f\" >> build/logs/check_all.log; /Users/vincent/Documents/Github/vitte/bin/vitte check \"$f\" >> build/logs/check_all.log 2>&1; done"
+  ..
+  .output marker "build/.check_all.ok"
+..
+
+[bake emit_all]
+  [run sh]
+    .set "-c" "set -e; mkdir -p build/logs build/cpp; : > build/logs/emit_all.log; find . -type f -name '*.vit' ! -path './.git/*' | sort | while IFS= read -r f; do out=build/cpp/$(echo \"$f\" | sed 's#^\./##; s#/#__#g; s#\.vit$##').cpp; echo \"[emit] $f -> $out\" >> build/logs/emit_all.log; /Users/vincent/Documents/Github/vitte/bin/vitte emit \"$f\" --emit-cpp --runtime-include /Users/vincent/Documents/Github/vitte/src/compiler/backends/runtime > \"$out\" 2>> build/logs/emit_all.log; done"
+  ..
+  .output marker "build/.emit_all.ok"
+..
+
+;; ------------------------------------------------------------
+;; Build pipeline (strict: every .vit must compile)
+;; ------------------------------------------------------------
+
+[bake build_all_debug]
+  [run sh]
+    .set "-c" "set -e; mkdir -p build/logs build/bin/debug; : > build/logs/build_all_debug.log; find . -type f -name '*.vit' ! -path './.git/*' | sort | while IFS= read -r f; do out=build/bin/debug/$(echo \"$f\" | sed 's#^\./##; s#/#__#g; s#\.vit$##').o; echo \"[build-debug] $f -> $out\" >> build/logs/build_all_debug.log; /Users/vincent/Documents/Github/vitte/bin/vitte build \"$f\" --debug -O0 --emit-obj --runtime-include /Users/vincent/Documents/Github/vitte/src/compiler/backends/runtime -o \"$out\" >> build/logs/build_all_debug.log 2>&1; done"
+  ..
+  .output marker "build/.build_all_debug.ok"
+..
+
+[bake build_all_release]
+  [run sh]
+    .set "-c" "set -e; mkdir -p build/logs build/bin/release; : > build/logs/build_all_release.log; find . -type f -name '*.vit' ! -path './.git/*' | sort | while IFS= read -r f; do out=build/bin/release/$(echo \"$f\" | sed 's#^\./##; s#/#__#g; s#\.vit$##').o; echo \"[build-release] $f -> $out\" >> build/logs/build_all_release.log; /Users/vincent/Documents/Github/vitte/bin/vitte build \"$f\" -O2 --emit-obj --runtime-include /Users/vincent/Documents/Github/vitte/src/compiler/backends/runtime -o \"$out\" >> build/logs/build_all_release.log 2>&1; done"
+  ..
+  .output marker "build/.build_all_release.ok"
+..
+
+[bake build_all]
+  [run sh]
+    .set "-c" "set -e; mkdir -p build/logs build/bin; : > build/logs/build_all.log; find . -type f -name '*.vit' ! -path './.git/*' | sort | while IFS= read -r f; do out=build/bin/$(echo \"$f\" | sed 's#^\./##; s#/#__#g; s#\.vit$##').o; echo \"[build] $f -> $out\" >> build/logs/build_all.log; /Users/vincent/Documents/Github/vitte/bin/vitte build \"$f\" --emit-obj --runtime-include /Users/vincent/Documents/Github/vitte/src/compiler/backends/runtime -o \"$out\" >> build/logs/build_all.log 2>&1; done"
+  ..
+  .output marker "build/.build_all.ok"
+..
+
+[bake full]
+  [run sh]
+    .set "-c" "set -e; /Users/vincent/Documents/Github/vitte/bin/vitte doctor; find . -type f -name '*.vit' ! -path './.git/*' | sort | while IFS= read -r f; do /Users/vincent/Documents/Github/vitte/bin/vitte parse --parse-silent \"$f\" >/dev/null; /Users/vincent/Documents/Github/vitte/bin/vitte check \"$f\" >/dev/null; /Users/vincent/Documents/Github/vitte/bin/vitte build \"$f\" --emit-obj --runtime-include /Users/vincent/Documents/Github/vitte/src/compiler/backends/runtime -o /tmp/platon_build_tmp.o >/dev/null; done"
+  ..
+  .output marker "build/.full.ok"
+..
+
+;; ------------------------------------------------------------
+;; Maintenance
+;; ------------------------------------------------------------
+
+[bake clean]
+  [run sh]
+    .set "-c" "rm -rf build"
+  ..
+  .output marker "build/.clean.ok"
+..
+
+[bake distclean]
+  [run sh]
+    .set "-c" "rm -rf build .steel-cache"
+  ..
+  .output marker "build/.distclean.ok"
+..
+
+[bake help]
+  [run sh]
+    .set "-c" "echo 'Targets: dirs doctor list_sources parse_all parse_strict_all check_all emit_all build_all_debug build_all_release build_all full clean distclean'"
+  ..
+  .output marker "build/.help.ok"
+..
+
+[export]
+  .ref ~bake/dirs
+  .ref ~bake/doctor
+  .ref ~bake/list_sources
+  .ref ~bake/parse_all
+  .ref ~bake/parse_strict_all
+  .ref ~bake/check_all
+  .ref ~bake/emit_all
+  .ref ~bake/build_all_debug
+  .ref ~bake/build_all_release
+  .ref ~bake/build_all
+  .ref ~bake/full
+  .ref ~bake/clean
+  .ref ~bake/distclean
+  .ref ~bake/help
+..

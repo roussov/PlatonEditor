@@ -1,0 +1,8 @@
+
+space platon.editor.search.replace
+
+form ReplaceResult {
+    replaced_count : int
+}
+
+proc replace_all(pattern : string, replacement : string, text : string) -> ReplaceResult {}

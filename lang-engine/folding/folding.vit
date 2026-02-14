@@ -1,0 +1,11 @@
+
+space platon.editor.lang_engine.folding
+
+form FoldRegion {
+    start_line : int
+    end_line : int
+    kind : string
+}
+
+proc compute() {}
+proc update_incremental() {}

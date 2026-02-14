@@ -1,0 +1,5 @@
+space platon.languages.vitte.lexer
+
+proc lex(input : string) {
+    # legacy-aware lexer
+}

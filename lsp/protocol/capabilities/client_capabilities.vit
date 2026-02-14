@@ -1,0 +1,7 @@
+
+space platon.lsp.protocol.capabilities
+
+form ClientCapabilities {
+    supports_completion : bool
+    supports_hover : bool
+}

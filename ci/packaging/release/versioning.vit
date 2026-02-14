@@ -1,0 +1,5 @@
+space platon.ci.packaging.release
+
+proc bump_version() {
+    # update semantic version
+}

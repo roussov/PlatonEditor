@@ -1,0 +1,7 @@
+space platon.languages.nushell
+
+form NushellConfig {
+    category : string
+}
+
+proc register() {}

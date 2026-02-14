@@ -1,0 +1,7 @@
+space platon.languages.bazel
+
+form BazelConfig {
+    category : string
+}
+
+proc register() {}

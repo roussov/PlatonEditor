@@ -1,0 +1,7 @@
+space platon.languages.foxpro
+
+form FoxproConfig {
+    category : string
+}
+
+proc register() {}

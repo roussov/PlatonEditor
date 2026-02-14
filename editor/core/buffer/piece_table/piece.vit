@@ -1,0 +1,7 @@
+space platon.editor.core.buffer.piece_table
+
+form Piece {
+    source : int
+    offset : int
+    length : int
+}

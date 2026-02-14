@@ -1,0 +1,5 @@
+space platon.bench.search.engine
+
+proc run_simd_scan() {
+    # SIMD accelerated scan
+}

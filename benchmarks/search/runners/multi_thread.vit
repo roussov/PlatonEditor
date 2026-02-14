@@ -1,0 +1,5 @@
+space platon.bench.search.runners
+
+proc run() {
+    # multi-thread search
+}

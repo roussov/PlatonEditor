@@ -1,0 +1,9 @@
+space platon.editor.debug.dap.session
+
+form DebugSession {
+    id : int
+    active : bool
+}
+
+proc start() {}
+proc stop() {}

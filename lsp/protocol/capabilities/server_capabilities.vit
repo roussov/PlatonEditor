@@ -1,0 +1,8 @@
+
+space platon.lsp.protocol.capabilities
+
+form ServerCapabilities {
+    completion_provider : bool
+    hover_provider : bool
+    definition_provider : bool
+}

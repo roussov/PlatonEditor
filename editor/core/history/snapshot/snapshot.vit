@@ -1,0 +1,4 @@
+space platon.editor.core.history.snapshot
+
+proc create_snapshot() {}
+proc restore_snapshot(id : int) {}

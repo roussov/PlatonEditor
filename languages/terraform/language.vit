@@ -1,0 +1,7 @@
+space platon.languages.terraform
+
+form TerraformConfig {
+    category : string
+}
+
+proc register() {}

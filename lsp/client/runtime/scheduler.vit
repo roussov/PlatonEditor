@@ -1,0 +1,5 @@
+
+space platon.lsp.client.runtime
+
+proc schedule(task : string) {}
+proc run() {}

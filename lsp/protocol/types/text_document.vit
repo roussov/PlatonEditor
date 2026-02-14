@@ -1,0 +1,11 @@
+
+space platon.lsp.protocol.types
+
+form TextDocumentIdentifier {
+    uri : string
+}
+
+form VersionedTextDocumentIdentifier {
+    uri : string
+    version : int
+}

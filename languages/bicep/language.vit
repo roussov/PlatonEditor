@@ -1,0 +1,7 @@
+space platon.languages.bicep
+
+form BicepConfig {
+    category : string
+}
+
+proc register() {}

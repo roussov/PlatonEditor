@@ -1,0 +1,2 @@
+# makefile lexer module
+proc lexer_entry() { }

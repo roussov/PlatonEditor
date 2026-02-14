@@ -1,0 +1,7 @@
+space platon.languages.prolog
+
+form PrologConfig {
+    category : string
+}
+
+proc register() {}

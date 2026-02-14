@@ -1,0 +1,11 @@
+
+space platon.editor.lang_engine.highlight
+
+form HighlightToken {
+    start : int
+    end : int
+    kind : string
+}
+
+proc highlight_full() {}
+proc highlight_incremental() {}

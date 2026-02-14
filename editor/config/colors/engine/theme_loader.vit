@@ -1,0 +1,229 @@
+space platon.editor.config.colors.engine.semantic
+
+# ============================================================
+# Semantic Token Model (LSP compatible)
+# ============================================================
+
+form SemanticToken {
+    token_type : string
+    modifiers  : int
+}
+
+# Bitmask modifiers
+const MOD_DECLARATION : int = 1
+const MOD_DEFINITION  : int = 2
+const MOD_READONLY    : int = 4
+const MOD_STATIC      : int = 8
+const MOD_DEPRECATED  : int = 16
+const MOD_ASYNC       : int = 32
+const MOD_DOCUMENTATION : int = 64
+
+# ============================================================
+# Color / Style
+# ============================================================
+
+form Color {
+    r : int
+    g : int
+    b : int
+}
+
+form SemanticStyle {
+    fg : Color
+    bold : bool
+    italic : bool
+    underline : bool
+}
+
+form PackedStyle {
+    rgb : int
+    flags : int
+}
+
+const FLAG_BOLD : int = 1
+const FLAG_ITALIC : int = 2
+const FLAG_UNDERLINE : int = 4
+
+# ============================================================
+# Theme Definition
+# ============================================================
+
+form ThemeSemantic {
+    keyword : Color
+    function : Color
+    variable : Color
+    type_name : Color
+    string_lit : Color
+    number_lit : Color
+    comment : Color
+    macro : Color
+    operator : Color
+    background : Color
+}
+
+proc default_dark_semantic() -> ThemeSemantic {
+    return ThemeSemantic {
+        keyword:     Color { r: 120, g: 160, b: 255 },
+        function:    Color { r: 100, g: 200, b: 255 },
+        variable:    Color { r: 220, g: 220, b: 220 },
+        type_name:   Color { r: 150, g: 220, b: 150 },
+        string_lit:  Color { r: 200, g: 180, b: 120 },
+        number_lit:  Color { r: 180, g: 140, b: 255 },
+        comment:     Color { r: 120, g: 130, b: 140 },
+        macro:       Color { r: 255, g: 160, b: 120 },
+        operator:    Color { r: 180, g: 180, b: 180 },
+        background:  Color { r: 24, g: 26, b: 31 }
+    }
+}
+
+# ============================================================
+# Utilities
+# ============================================================
+
+proc pack_rgb(c : Color) -> int {
+    return (c.r << 16) | (c.g << 8) | c.b
+}
+
+proc has_modifier(mask : int, flag : int) -> bool {
+    return (mask & flag) != 0
+}
+
+proc style_flags(style : SemanticStyle) -> int {
+    let flags = 0
+
+    if style.bold {
+        set flags = flags | FLAG_BOLD
+    }
+
+    if style.italic {
+        set flags = flags | FLAG_ITALIC
+    }
+
+    if style.underline {
+        set flags = flags | FLAG_UNDERLINE
+    }
+
+    return flags
+}
+
+# ============================================================
+# Contrast Guard (WCAG safe threshold 4.5 approximated)
+# ============================================================
+
+proc luminance(c : Color) -> int {
+    return (c.r * 2126 + c.g * 7152 + c.b * 722) / 10000
+}
+
+proc contrast_ratio(a : Color, b : Color) -> int {
+    let la = luminance(a)
+    let lb = luminance(b)
+
+    if la > lb {
+        return (la + 5) * 100 / (lb + 5)
+    } else {
+        return (lb + 5) * 100 / (la + 5)
+    }
+}
+
+proc ensure_contrast(fg : Color, bg : Color) -> Color {
+    let ratio = contrast_ratio(fg, bg)
+
+    if ratio >= 450 {
+        return fg
+    }
+
+    # brighten fallback
+    return Color {
+        r: if fg.r + 40 > 255 { 255 } else { fg.r + 40 },
+        g: if fg.g + 40 > 255 { 255 } else { fg.g + 40 },
+        b: if fg.b + 40 > 255 { 255 } else { fg.b + 40 }
+    }
+}
+
+# ============================================================
+# Resolution Engine
+# ============================================================
+
+proc resolve_semantic(token : SemanticToken, theme : ThemeSemantic) -> SemanticStyle {
+
+    let base =
+        if token.token_type == "keyword" {
+            theme.keyword
+        } else if token.token_type == "function" {
+            theme.function
+        } else if token.token_type == "variable" {
+            theme.variable
+        } else if token.token_type == "type" {
+            theme.type_name
+        } else if token.token_type == "string" {
+            theme.string_lit
+        } else if token.token_type == "number" {
+            theme.number_lit
+        } else if token.token_type == "comment" {
+            theme.comment
+        } else if token.token_type == "macro" {
+            theme.macro
+        } else {
+            theme.operator
+        }
+
+    let safe_color = ensure_contrast(base, theme.background)
+
+    let bold = has_modifier(token.modifiers, MOD_DEFINITION)
+    let italic = has_modifier(token.modifiers, MOD_STATIC)
+    let underline = has_modifier(token.modifiers, MOD_DEPRECATED)
+
+    return SemanticStyle {
+        fg: safe_color,
+        bold: bold,
+        italic: italic,
+        underline: underline
+    }
+}
+
+# ============================================================
+# Packed Render (renderer-ready)
+# ============================================================
+
+proc prepare_semantic_render(token : SemanticToken, theme : ThemeSemantic) -> PackedStyle {
+
+    let style = resolve_semantic(token, theme)
+
+    return PackedStyle {
+        rgb: pack_rgb(style.fg),
+        flags: style_flags(style)
+    }
+}
+
+# ============================================================
+# Bulk Pipeline (vector-style loop ready)
+# ============================================================
+
+proc resolve_bulk(count : int) {
+    let theme = default_dark_semantic()
+    let i = 0
+
+    loop {
+        if i >= count {
+            break
+        }
+
+        prepare_semantic_render(
+            SemanticToken {
+                token_type: "variable",
+                modifiers: MOD_DECLARATION | MOD_STATIC
+            },
+            theme
+        )
+
+        set i = i + 1
+    }
+}
+
+# ============================================================
+# Stress test 1M tokens
+# ============================================================
+
+proc stress_1m() {
+    resolve_bulk(1000000)
+}

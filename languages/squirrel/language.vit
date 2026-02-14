@@ -1,0 +1,7 @@
+space platon.languages.squirrel
+
+form SquirrelConfig {
+    category : string
+}
+
+proc register() {}

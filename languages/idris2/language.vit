@@ -1,0 +1,7 @@
+space platon.languages.idris2
+
+form Idris2Config {
+    category : string
+}
+
+proc register() {}

@@ -1,0 +1,11 @@
+
+space platon.editor.term.profiler
+
+form TermSpan {
+    name : string
+    start_ns : int
+    end_ns : int
+}
+
+proc begin(name : string) -> TermSpan {}
+proc end(span : TermSpan) {}

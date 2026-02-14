@@ -1,0 +1,126 @@
+space platon.editor.config.colors.runtime.snapshot
+
+# ============================================================
+# Core Models
+# ============================================================
+
+form Color {
+    r : int
+    g : int
+    b : int
+}
+
+form PackedStyle {
+    rgb : int
+    flags : int
+}
+
+form SnapshotEntry {
+    token_type : string
+    style : PackedStyle
+}
+
+form ColorSnapshot {
+    version : int
+    entries_count : int
+}
+
+# ============================================================
+# Internal State
+# ============================================================
+
+let current_version : int = 0
+let active_entries : int = 0
+
+# ============================================================
+# Version Management
+# ============================================================
+
+proc next_version() -> int {
+    set current_version = current_version + 1
+    return current_version
+}
+
+proc current_snapshot_version() -> int {
+    return current_version
+}
+
+# ============================================================
+# Snapshot Creation
+# ============================================================
+
+proc create_snapshot(entry_count : int) -> ColorSnapshot {
+
+    let version = next_version()
+
+    return ColorSnapshot {
+        version: version,
+        entries_count: entry_count
+    }
+}
+
+# ============================================================
+# Diff Detection
+# ============================================================
+
+proc has_changed(old_version : int) -> bool {
+    return old_version != current_version
+}
+
+# ============================================================
+# Rollback
+# ============================================================
+
+proc rollback_to(version : int) {
+    if version < current_version {
+        set current_version = version
+    }
+}
+
+# ============================================================
+# Cache Integration
+# ============================================================
+
+proc invalidate_runtime_cache() {
+    set active_entries = 0
+}
+
+proc apply_snapshot(snapshot : ColorSnapshot) {
+    set active_entries = snapshot.entries_count
+}
+
+# ============================================================
+# Atomic Swap (renderer safe)
+# ============================================================
+
+proc swap_snapshot(snapshot : ColorSnapshot) {
+    apply_snapshot(snapshot)
+}
+
+# ============================================================
+# Bulk Snapshot Builder
+# ============================================================
+
+proc build_bulk_snapshot(count : int) -> ColorSnapshot {
+
+    let i = 0
+
+    loop {
+        if i >= count {
+            break
+        }
+
+        # simulate style resolution cost
+        set i = i + 1
+    }
+
+    return create_snapshot(count)
+}
+
+# ============================================================
+# Stress Test (1M entries)
+# ============================================================
+
+proc stress_snapshot_1m() {
+    build_bulk_snapshot(1000000)
+}

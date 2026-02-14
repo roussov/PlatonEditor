@@ -1,0 +1,9 @@
+space platon.editor.runtime.loop
+
+form EventLoop {
+    running : bool
+}
+
+proc start(loop : EventLoop) {}
+proc stop(loop : EventLoop) {}
+proc tick(loop : EventLoop) {}

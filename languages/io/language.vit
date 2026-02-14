@@ -1,0 +1,7 @@
+space platon.languages.io
+
+form IoConfig {
+    category : string
+}
+
+proc register() {}

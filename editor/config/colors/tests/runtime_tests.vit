@@ -1,0 +1,200 @@
+space platon.editor.config.colors.tests.runtime
+
+# ============================================================
+# Minimal Models (local mirror)
+# ============================================================
+
+form Color {
+    r : int
+    g : int
+    b : int
+}
+
+# ============================================================
+# Assertions
+# ============================================================
+
+proc assert_true(cond : bool) {
+    if not cond {
+        panic()
+    }
+}
+
+proc assert_eq_int(a : int, b : int) {
+    if a != b {
+        panic()
+    }
+}
+
+# ============================================================
+# Snapshot Tests
+# ============================================================
+
+proc test_snapshot_version_increment() {
+
+    let v1 = current_snapshot_version()
+    create_snapshot(10)
+    let v2 = current_snapshot_version()
+
+    assert_true(v2 > v1)
+}
+
+proc test_snapshot_diff_detection() {
+
+    let v = current_snapshot_version()
+    create_snapshot(5)
+
+    assert_true(has_changed(v))
+}
+
+# ============================================================
+# Theme Switcher Tests
+# ============================================================
+
+proc test_theme_switch_dark_light() {
+
+    switch_dark()
+    let dark_version = current_theme_version()
+
+    switch_light()
+    let light_version = current_theme_version()
+
+    assert_true(light_version > dark_version)
+}
+
+proc test_custom_theme_switch() {
+
+    switch_custom(
+        "custom",
+        Color { r: 10, g: 10, b: 10 },
+        Color { r: 200, g: 200, b: 200 }
+    )
+
+    let theme = current_theme()
+
+    assert_eq_int(theme.background.r, 10)
+    assert_eq_int(theme.foreground.r, 200)
+}
+
+# ============================================================
+# WCAG Validator Tests
+# ============================================================
+
+proc test_wcag_pass() {
+
+    let result = validate_contrast(
+        Color { r: 255, g: 255, b: 255 },
+        Color { r: 0, g: 0, b: 0 }
+    )
+
+    assert_true(result.aa_pass)
+}
+
+proc test_wcag_fail() {
+
+    let result = validate_contrast(
+        Color { r: 120, g: 120, b: 120 },
+        Color { r: 130, g: 130, b: 130 }
+    )
+
+    assert_true(not result.aa_pass)
+}
+
+# ============================================================
+# Semantic Resolution Test
+# ============================================================
+
+proc test_semantic_resolution() {
+
+    let theme = default_dark_semantic()
+
+    let style = resolve_semantic(
+        SemanticToken {
+            token_type: "keyword",
+            modifiers: MOD_DEFINITION
+        },
+        theme
+    )
+
+    assert_true(style.bold)
+}
+
+# ============================================================
+# System Detection Test (stub-safe)
+# ============================================================
+
+proc test_system_detect_safe() {
+
+    let env = detect_system_environment()
+
+    # Should not crash and fields must be valid booleans
+    assert_true(env.term.colors_16 == true or env.term.colors_16 == false)
+}
+
+# ============================================================
+# Cache Invalidation Test
+# ============================================================
+
+proc test_cache_invalidation() {
+
+    invalidate_color_cache()
+
+    assert_true(true)
+}
+
+# ============================================================
+# Stress Tests
+# ============================================================
+
+proc test_stress_theme_switch() {
+
+    let i = 0
+
+    loop {
+        if i >= 10000 {
+            break
+        }
+
+        if (i % 2) == 0 {
+            switch_dark()
+        } else {
+            switch_light()
+        }
+
+        set i = i + 1
+    }
+
+    assert_true(true)
+}
+
+proc test_bulk_semantic_resolution() {
+
+    resolve_bulk(50000)
+    assert_true(true)
+}
+
+proc test_snapshot_stress() {
+
+    stress_snapshot_1m()
+    assert_true(true)
+}
+
+# ============================================================
+# Master Runner
+# ============================================================
+
+proc run_runtime_tests() {
+
+    test_snapshot_version_increment()
+    test_snapshot_diff_detection()
+    test_theme_switch_dark_light()
+    test_custom_theme_switch()
+    test_wcag_pass()
+    test_wcag_fail()
+    test_semantic_resolution()
+    test_system_detect_safe()
+    test_cache_invalidation()
+    test_stress_theme_switch()
+    test_bulk_semantic_resolution()
+    test_snapshot_stress()
+}

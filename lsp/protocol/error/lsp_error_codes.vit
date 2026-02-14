@@ -1,0 +1,5 @@
+
+space platon.lsp.protocol.error
+
+const ServerNotInitialized = -32002
+const UnknownErrorCode = -32001

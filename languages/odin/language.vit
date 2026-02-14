@@ -1,0 +1,7 @@
+space platon.languages.odin
+
+form OdinConfig {
+    category : string
+}
+
+proc register() {}

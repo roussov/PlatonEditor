@@ -1,0 +1,4 @@
+space platon.editor.core.history.time_travel
+
+proc goto_timestamp(ts : int) {}
+proc list_timeline() {}

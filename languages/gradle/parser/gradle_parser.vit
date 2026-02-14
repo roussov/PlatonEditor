@@ -1,0 +1,2 @@
+# gradle parser module
+proc parser_entry() { }

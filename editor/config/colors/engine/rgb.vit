@@ -1,0 +1,165 @@
+space platon.editor.config.colors.engine
+
+# ============================================================
+# Core Models
+# ============================================================
+
+form Color {
+    r : int
+    g : int
+    b : int
+}
+
+form Theme {
+    name : string
+    background : Color
+    foreground : Color
+    accent : Color
+    error : Color
+    warning : Color
+    info : Color
+}
+
+form ResolvedColor {
+    fg : Color
+    bg : Color
+    bold : bool
+}
+
+# ============================================================
+# Utilities
+# ============================================================
+
+proc clamp(v : int) -> int {
+    if v < 0 {
+        return 0
+    }
+    if v > 255 {
+        return 255
+    }
+    return v
+}
+
+proc pack_rgb(c : Color) -> int {
+    return (c.r << 16) | (c.g << 8) | c.b
+}
+
+proc luminance(c : Color) -> int {
+    return (c.r * 2126 + c.g * 7152 + c.b * 722) / 10000
+}
+
+proc contrast_ratio(a : Color, b : Color) -> int {
+    let la = luminance(a)
+    let lb = luminance(b)
+
+    if la > lb {
+        return (la + 5) * 100 / (lb + 5)
+    } else {
+        return (lb + 5) * 100 / (la + 5)
+    }
+}
+
+# ============================================================
+# Theme Factory
+# ============================================================
+
+proc dark_theme() -> Theme {
+    return Theme {
+        name: "dark",
+        background: Color { r: 24, g: 26, b: 31 },
+        foreground: Color { r: 220, g: 220, b: 220 },
+        accent: Color { r: 100, g: 160, b: 255 },
+        error: Color { r: 255, g: 90, b: 90 },
+        warning: Color { r: 255, g: 180, b: 80 },
+        info: Color { r: 80, g: 200, b: 255 }
+    }
+}
+
+proc light_theme() -> Theme {
+    return Theme {
+        name: "light",
+        background: Color { r: 250, g: 250, b: 250 },
+        foreground: Color { r: 30, g: 30, b: 30 },
+        accent: Color { r: 0, g: 120, b: 215 },
+        error: Color { r: 200, g: 40, b: 40 },
+        warning: Color { r: 200, g: 120, b: 40 },
+        info: Color { r: 40, g: 120, b: 200 }
+    }
+}
+
+# ============================================================
+# Semantic Resolution
+# ============================================================
+
+proc resolve_token(kind : string, theme : Theme) -> ResolvedColor {
+
+    if kind == "keyword" {
+        return ResolvedColor {
+            fg: theme.accent,
+            bg: theme.background,
+            bold: true
+        }
+    }
+
+    if kind == "error" {
+        return ResolvedColor {
+            fg: theme.error,
+            bg: theme.background,
+            bold: true
+        }
+    }
+
+    if kind == "warning" {
+        return ResolvedColor {
+            fg: theme.warning,
+            bg: theme.background,
+            bold: false
+        }
+    }
+
+    if kind == "info" {
+        return ResolvedColor {
+            fg: theme.info,
+            bg: theme.background,
+            bold: false
+        }
+    }
+
+    return ResolvedColor {
+        fg: theme.foreground,
+        bg: theme.background,
+        bold: false
+    }
+}
+
+# ============================================================
+# Auto Contrast Adjustment
+# ============================================================
+
+proc ensure_min_contrast(fg : Color, bg : Color) -> Color {
+    let ratio = contrast_ratio(fg, bg)
+
+    if ratio >= 450 {
+        return fg
+    }
+
+    # brighten foreground if too low contrast
+    return Color {
+        r: clamp(fg.r + 40),
+        g: clamp(fg.g + 40),
+        b: clamp(fg.b + 40)
+    }
+}
+
+# ============================================================
+# Render Preparation
+# ============================================================
+
+proc prepare_render(kind : string, theme : Theme) -> int {
+
+    let resolved = resolve_token(kind, theme)
+
+    let safe_fg = ensure_min_contrast(resolved.fg, resolved.bg)
+
+    return pack_rgb(safe_fg)
+}

@@ -1,0 +1,6 @@
+space platon.editor.core.buffer
+
+form Cursor {
+    line : int
+    column : int
+}

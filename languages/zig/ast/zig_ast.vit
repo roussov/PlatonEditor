@@ -1,0 +1,2 @@
+# zig ast module
+proc ast_entry() { }

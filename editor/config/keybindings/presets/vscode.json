@@ -1,0 +1,6 @@
+{
+  "Ctrl+S": "save_file",
+  "Ctrl+P": "command_palette",
+  "Ctrl+F": "search",
+  "Ctrl+Shift+P": "command_palette"
+}

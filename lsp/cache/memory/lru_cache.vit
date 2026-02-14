@@ -1,0 +1,7 @@
+
+space platon.lsp.cache.memory
+
+form LruNode { key : string }
+
+proc insert(key : string) {}
+proc evict() {}

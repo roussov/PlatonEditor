@@ -1,0 +1,2 @@
+# idris2 formatter module
+proc formatter_entry() { }

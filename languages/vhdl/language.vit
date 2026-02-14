@@ -1,0 +1,7 @@
+space platon.languages.vhdl
+
+form VhdlConfig {
+    tier : string
+}
+
+proc register() {}

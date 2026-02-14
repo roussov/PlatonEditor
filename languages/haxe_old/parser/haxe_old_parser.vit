@@ -1,0 +1,2 @@
+# haxe_old parser module
+proc parser_entry() { }

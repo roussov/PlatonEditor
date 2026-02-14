@@ -1,0 +1,5 @@
+space platon.lsp.protocol.requests
+
+form HoverRequest {
+    id : int
+}

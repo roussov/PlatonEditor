@@ -1,0 +1,7 @@
+space platon.languages.c
+
+form CConfig {
+    tier : string
+}
+
+proc register() {}

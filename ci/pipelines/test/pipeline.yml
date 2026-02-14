@@ -1,0 +1,6 @@
+
+name: Test Pipeline
+stages:
+  - unit_tests
+  - integration_tests
+  - fuzz_tests

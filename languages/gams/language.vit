@@ -1,0 +1,7 @@
+space platon.languages.gams
+
+form GamsConfig {
+    category : string
+}
+
+proc register() {}

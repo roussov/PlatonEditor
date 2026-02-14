@@ -1,0 +1,17 @@
+space platon.bench.multi_thread.runtime
+
+form Job {
+    id : int
+}
+
+form ThreadPool {
+    size : int
+}
+
+proc init(pool : ThreadPool, size : int) {
+    pool.size = size
+}
+
+proc execute(pool : ThreadPool, job : Job) {
+    # simulated threaded execution
+}

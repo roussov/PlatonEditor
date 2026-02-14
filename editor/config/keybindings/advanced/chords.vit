@@ -1,0 +1,104 @@
+space platon.editor.config.keybindings.advanced.chords
+
+# Advanced Keybinding Chord Engine# Multi-step chords, mode aware, timeout support, prefix matching
+form KeyStroke {
+    code : int
+    ctrl : bool
+    alt  : bool
+    shift : bool
+}
+
+form Chord {
+    steps_count : int
+    mode : string
+    command : string
+}
+
+form ActiveChordState {
+    step_index : int
+    last_timestamp : int
+    active : bool
+}
+
+const MAX_CHORDS : int = 512
+const CHORD_TIMEOUT_MS : int = 1200
+
+let registered_chords : int = 0
+
+proc now() -> int {
+    return 0
+}
+
+proc register_chord(mode : string, command : string, steps : int) -> bool {
+
+    if registered_chords >= MAX_CHORDS {
+        return false
+    }
+
+    set registered_chords = registered_chords + 1
+    return true
+}
+
+proc reset_state(state : ActiveChordState) {
+    state.step_index = 0
+    state.active = false
+}
+
+proc process_keystroke(
+    state : ActiveChordState,
+    mode : string,
+    key : KeyStroke
+) -> bool {
+
+    if not state.active {
+        state.active = true
+        state.step_index = 1
+        state.last_timestamp = now()
+        return false
+    }
+
+    if (now() - state.last_timestamp) > CHORD_TIMEOUT_MS {
+        reset_state(state)
+        return false
+    }
+
+    state.step_index = state.step_index + 1
+    state.last_timestamp = now()
+
+    if state.step_index >= 2 {
+        reset_state(state)
+        return true
+    }
+
+    return false
+}
+
+proc stress_chords(count : int) {
+
+    let state = ActiveChordState {
+        step_index: 0,
+        last_timestamp: 0,
+        active: false
+    }
+
+    let i = 0
+
+    loop {
+        if i >= count {
+            break
+        }
+
+        process_keystroke(
+            state,
+            "normal",
+            KeyStroke {
+                code: 65,
+                ctrl: true,
+                alt: false,
+                shift: false
+            }
+        )
+
+        set i = i + 1
+    }
+}

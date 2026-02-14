@@ -1,0 +1,9 @@
+
+space platon.editor.search.fuzzy
+
+form Match {
+    score : int
+    position : int
+}
+
+proc search(query : string, text : string) -> Match {}

@@ -1,0 +1,5 @@
+
+space platon.lsp.servers.metrics
+
+proc active_sessions() {}
+proc request_rate() {}

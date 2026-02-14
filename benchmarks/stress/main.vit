@@ -1,0 +1,9 @@
+space platon.bench.stress
+
+pull platon.bench.stress.runners.master_runner
+pull platon.bench.stress.metrics.report
+
+entry bench at platon.bench.stress {
+    master_runner.run_all()
+    report.generate()
+}

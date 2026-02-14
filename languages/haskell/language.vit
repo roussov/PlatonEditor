@@ -1,0 +1,7 @@
+space platon.languages.haskell
+
+form HaskellConfig {
+    tier : string
+}
+
+proc register() {}

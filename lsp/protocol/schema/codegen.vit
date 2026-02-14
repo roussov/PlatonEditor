@@ -1,0 +1,4 @@
+
+space platon.lsp.protocol.schema
+
+proc generate_from_schema(path : string) {}

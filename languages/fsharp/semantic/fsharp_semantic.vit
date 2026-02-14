@@ -1,0 +1,2 @@
+# fsharp semantic module
+proc semantic_entry() { }

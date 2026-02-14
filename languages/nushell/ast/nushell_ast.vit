@@ -1,0 +1,2 @@
+# nushell ast module
+proc ast_entry() { }

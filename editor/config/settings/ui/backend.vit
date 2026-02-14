@@ -1,0 +1,192 @@
+space platon.editor.config.settings.ui.backend
+
+<<< Settings UI Backend Engine ULTRA MAX++ >>>
+<<< Reactive binding, change propagation, validation bridge, transaction aware >>>
+
+form UISettingField {
+    key : string
+    value : string
+    dirty : bool
+    valid : bool
+}
+
+form UIBackendState {
+    version : int
+    fields_count : int
+    last_applied_version : int
+}
+
+const MAX_UI_FIELDS : int = 2048
+
+let ui_state = UIBackendState {
+    version: 1,
+    fields_count: 0,
+    last_applied_version: 1
+}
+
+<<< Internal version bump >>>
+
+proc bump_ui_version() {
+    set ui_state.version = ui_state.version + 1
+}
+
+<<< Register UI field >>>
+
+proc register_field(key : string, initial_value : string) -> UISettingField {
+
+    if ui_state.fields_count >= MAX_UI_FIELDS {
+        panic()
+    }
+
+    set ui_state.fields_count = ui_state.fields_count + 1
+
+    return UISettingField {
+        key: key,
+        value: initial_value,
+        dirty: false,
+        valid: true
+    }
+}
+
+<<< Update field value >>>
+
+proc update_field(field : UISettingField, new_value : string) -> UISettingField {
+
+    let updated = UISettingField {
+        key: field.key,
+        value: new_value,
+        dirty: true,
+        valid: validate_field(field.key, new_value)
+    }
+
+    bump_ui_version()
+
+    return updated
+}
+
+<<< Validation bridge stub >>>
+
+proc validate_field(key : string, value : string) -> bool {
+
+    <<< Real engine would call schema validator >>>
+
+    if value == "" {
+        return false
+    }
+
+    return true
+}
+
+<<< Apply UI changes to store >>>
+
+proc apply_changes(field : UISettingField) {
+
+    if not field.valid {
+        return
+    }
+
+    begin_transaction()
+
+    apply_change()
+
+    commit_transaction()
+
+    set ui_state.last_applied_version = current_tx_version()
+}
+
+<<< Reset dirty state >>>
+
+proc clear_dirty(field : UISettingField) -> UISettingField {
+
+    return UISettingField {
+        key: field.key,
+        value: field.value,
+        dirty: false,
+        valid: field.valid
+    }
+}
+
+<<< Snapshot UI version >>>
+
+proc current_ui_version() -> int {
+    return ui_state.version
+}
+
+<<< Revert UI changes >>>
+
+proc revert_field(field : UISettingField, original_value : string) -> UISettingField {
+
+    rollback_transaction()
+
+    return UISettingField {
+        key: field.key,
+        value: original_value,
+        dirty: false,
+        valid: true
+    }
+}
+
+<<< Bulk apply scenario >>>
+
+proc bulk_apply(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        let f = register_field("editor.theme", "dark")
+
+        let updated = update_field(f, "light")
+
+        if updated.valid {
+            apply_changes(updated)
+        }
+
+        set i = i + 1
+    }
+}
+
+<<< Stress UI update loop >>>
+
+proc stress_ui_updates(iterations : int) {
+
+    let f = register_field("font.size", "12")
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        let updated = update_field(f, "14")
+
+        set i = i + 1
+    }
+}
+
+<<< Reactive dirty propagation test stub >>>
+
+proc simulate_reactive_cycle(iterations : int) {
+
+    let f = register_field("autosave.interval", "10")
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        let updated = update_field(f, "15")
+
+        if updated.valid {
+            apply_changes(updated)
+        }
+
+        set i = i + 1
+    }
+}

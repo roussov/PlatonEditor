@@ -1,0 +1,190 @@
+space platon.editor.config.settings.tests.migration
+
+<<< Migration Engine ULTRA MAX++ Test Suite >>>
+<<< Covers semantic compare, forward migration, no-op, rollback safety, stress >>>
+
+form SemVersion {
+    major : int
+    minor : int
+    patch : int
+}
+
+proc assert_true(cond : bool) {
+    if not cond {
+        panic()
+    }
+}
+
+proc assert_false(cond : bool) {
+    if cond {
+        panic()
+    }
+}
+
+proc assert_eq_int(a : int, b : int) {
+    if a != b {
+        panic()
+    }
+}
+
+proc assert_version_equal(a : SemVersion, b : SemVersion) {
+    assert_eq_int(a.major, b.major)
+    assert_eq_int(a.minor, b.minor)
+    assert_eq_int(a.patch, b.patch)
+}
+
+<<< Version equality test >>>
+
+proc test_version_equal() {
+
+    let a = SemVersion { major: 1, minor: 0, patch: 0 }
+    let b = SemVersion { major: 1, minor: 0, patch: 0 }
+
+    assert_true(version_equal(a, b))
+}
+
+<<< Version less comparison test >>>
+
+proc test_version_less() {
+
+    let a = SemVersion { major: 1, minor: 0, patch: 0 }
+    let b = SemVersion { major: 2, minor: 0, patch: 0 }
+
+    assert_true(version_less(a, b))
+}
+
+<<< No migration when equal >>>
+
+proc test_no_migration_needed() {
+
+    force_version(1, 0, 0)
+
+    let target = SemVersion { major: 1, minor: 0, patch: 0 }
+
+    let result = migrate_to(target)
+
+    assert_true(result.success)
+    assert_false(result.migrated)
+}
+
+<<< Forward migration test >>>
+
+proc test_forward_migration() {
+
+    force_version(1, 0, 0)
+
+    let target = SemVersion { major: 2, minor: 0, patch: 0 }
+
+    let result = migrate_to(target)
+
+    assert_true(result.success)
+    assert_true(result.migrated)
+
+    let current = current_version()
+
+    assert_version_equal(current, target)
+}
+
+<<< Rollback simulation test >>>
+
+proc test_rollback_simulation() {
+
+    force_version(1, 0, 0)
+
+    let original = current_version()
+
+    <<< Simulated rollback by forcing manual revert >>>
+    rollback_migration(original)
+
+    let after = current_version()
+
+    assert_version_equal(after, original)
+}
+
+<<< Multiple step migration stress >>>
+
+proc test_multiple_migrations() {
+
+    force_version(1, 0, 0)
+
+    let i = 0
+
+    loop {
+        if i >= 10 {
+            break
+        }
+
+        migrate_to(
+            SemVersion {
+                major: 2,
+                minor: i,
+                patch: 0
+            }
+        )
+
+        force_version(1, 0, 0)
+
+        set i = i + 1
+    }
+
+    assert_true(true)
+}
+
+<<< Heavy version compare stress >>>
+
+proc test_stress_version_compare() {
+
+    let i = 0
+
+    loop {
+        if i >= 100000 {
+            break
+        }
+
+        version_less(
+            SemVersion { major: 1, minor: 0, patch: 0 },
+            SemVersion { major: 2, minor: 0, patch: 0 }
+        )
+
+        set i = i + 1
+    }
+
+    assert_true(true)
+}
+
+<<< Heavy migration stress >>>
+
+proc test_stress_migration() {
+
+    let i = 0
+
+    loop {
+        if i >= 20000 {
+            break
+        }
+
+        force_version(1, 0, 0)
+
+        migrate_to(
+            SemVersion { major: 3, minor: 0, patch: 0 }
+        )
+
+        set i = i + 1
+    }
+
+    assert_true(true)
+}
+
+<<< Master runner >>>
+
+proc run_migration_tests_ultra() {
+
+    test_version_equal()
+    test_version_less()
+    test_no_migration_needed()
+    test_forward_migration()
+    test_rollback_simulation()
+    test_multiple_migrations()
+    test_stress_version_compare()
+    test_stress_migration()
+}

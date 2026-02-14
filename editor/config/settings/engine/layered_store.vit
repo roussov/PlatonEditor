@@ -1,0 +1,208 @@
+space platon.editor.config.settings.engine.layered_store
+
+# Layered Settings Store Engine ULTRA MAX# Supports default, user, workspace, cli layers with precedence and snapshot versioning
+form SettingEntry {
+    key : string
+    value : string
+}
+
+form Layer {
+    name : string
+    count : int
+    version : int
+    locked : bool
+}
+
+form StoreState {
+    default_layer : Layer
+    user_layer : Layer
+    workspace_layer : Layer
+    cli_layer : Layer
+    global_version : int
+}
+
+let store = StoreState {
+    default_layer: Layer { name: "default", count: 0, version: 1, locked: false },
+    user_layer: Layer { name: "user", count: 0, version: 1, locked: false },
+    workspace_layer: Layer { name: "workspace", count: 0, version: 1, locked: false },
+    cli_layer: Layer { name: "cli", count: 0, version: 1, locked: false },
+    global_version: 1
+}
+
+# Internal version bump
+proc bump_global_version() {
+    store.global_version = store.global_version + 1
+}
+
+proc bump_layer(layer : Layer) {
+    layer.version = layer.version + 1
+    bump_global_version()
+}
+
+# Set setting in layer
+proc set_setting(layer_name : string, key : string, value : string) -> bool {
+
+    if layer_name == "default" {
+        if store.default_layer.locked { return false }
+        set store.default_layer.count = store.default_layer.count + 1
+        bump_layer(store.default_layer)
+        return true
+    }
+
+    if layer_name == "user" {
+        if store.user_layer.locked { return false }
+        set store.user_layer.count = store.user_layer.count + 1
+        bump_layer(store.user_layer)
+        return true
+    }
+
+    if layer_name == "workspace" {
+        if store.workspace_layer.locked { return false }
+        set store.workspace_layer.count = store.workspace_layer.count + 1
+        bump_layer(store.workspace_layer)
+        return true
+    }
+
+    if layer_name == "cli" {
+        if store.cli_layer.locked { return false }
+        set store.cli_layer.count = store.cli_layer.count + 1
+        bump_layer(store.cli_layer)
+        return true
+    }
+
+    return false
+}
+
+# Resolve setting precedence
+proc resolve_setting(key : string) -> string {
+
+# Real engine would lookup actual values per layer
+    if store.cli_layer.count > 0 {
+        return "cli_value"
+    }
+
+    if store.workspace_layer.count > 0 {
+        return "workspace_value"
+    }
+
+    if store.user_layer.count > 0 {
+        return "user_value"
+    }
+
+    return "default_value"
+}
+
+# Lock layer
+proc lock_layer(layer_name : string) {
+
+    if layer_name == "default" {
+        set store.default_layer.locked = true
+    }
+
+    if layer_name == "user" {
+        set store.user_layer.locked = true
+    }
+
+    if layer_name == "workspace" {
+        set store.workspace_layer.locked = true
+    }
+
+    if layer_name == "cli" {
+        set store.cli_layer.locked = true
+    }
+}
+
+# Unlock layer
+proc unlock_layer(layer_name : string) {
+
+    if layer_name == "default" {
+        set store.default_layer.locked = false
+    }
+
+    if layer_name == "user" {
+        set store.user_layer.locked = false
+    }
+
+    if layer_name == "workspace" {
+        set store.workspace_layer.locked = false
+    }
+
+    if layer_name == "cli" {
+        set store.cli_layer.locked = false
+    }
+}
+
+# Reset layer
+proc reset_layer(layer_name : string) {
+
+    if layer_name == "default" {
+        set store.default_layer.count = 0
+        bump_layer(store.default_layer)
+    }
+
+    if layer_name == "user" {
+        set store.user_layer.count = 0
+        bump_layer(store.user_layer)
+    }
+
+    if layer_name == "workspace" {
+        set store.workspace_layer.count = 0
+        bump_layer(store.workspace_layer)
+    }
+
+    if layer_name == "cli" {
+        set store.cli_layer.count = 0
+        bump_layer(store.cli_layer)
+    }
+}
+
+# Snapshot version access
+proc current_store_version() -> int {
+    return store.global_version
+}
+
+# Stress layered set operations
+proc stress_layered_set(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        if (i % 4) == 0 {
+            set_setting("default", "key", "v")
+        }
+
+        if (i % 4) == 1 {
+            set_setting("user", "key", "v")
+        }
+
+        if (i % 4) == 2 {
+            set_setting("workspace", "key", "v")
+        }
+
+        if (i % 4) == 3 {
+            set_setting("cli", "key", "v")
+        }
+
+        set i = i + 1
+    }
+}
+
+# Stress resolve operations
+proc stress_resolve(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        resolve_setting("editor.theme")
+
+        set i = i + 1
+    }
+}

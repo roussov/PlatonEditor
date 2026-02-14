@@ -1,0 +1,7 @@
+space platon.languages.janus
+
+form JanusConfig {
+    category : string
+}
+
+proc register() {}

@@ -1,0 +1,5 @@
+space platon.lsp.protocol.notifications
+
+form Did_openNotification {
+    uri : string
+}

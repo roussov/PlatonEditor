@@ -1,0 +1,7 @@
+space platon.languages.cue
+
+form CueConfig {
+    category : string
+}
+
+proc register() {}

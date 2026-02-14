@@ -1,0 +1,2 @@
+# julia semantic module
+proc semantic_entry() { }

@@ -1,0 +1,7 @@
+
+space platon.lsp.cache.persistent
+
+proc open_db(path : string) {}
+proc read(key : string) {}
+proc write(key : string, value : string) {}
+proc flush() {}

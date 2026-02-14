@@ -1,0 +1,5 @@
+space platon.bench.startup.runners
+
+proc run_all() {
+    # execute all startup scenarios
+}

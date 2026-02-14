@@ -1,0 +1,2 @@
+# crystal formatter module
+proc formatter_entry() { }

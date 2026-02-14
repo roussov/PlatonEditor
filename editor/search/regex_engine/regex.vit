@@ -1,0 +1,12 @@
+
+space platon.editor.search.regex_engine
+
+form Regex {
+    pattern : string
+}
+
+proc compile(p : string) -> Regex {
+    give Regex { pattern: p }
+}
+
+proc match(r : Regex, text : string) -> bool {}

@@ -1,0 +1,5 @@
+space platon.bench.file_open.runners.compare_runner
+
+proc run_all() {
+    # run all benchmark modes
+}

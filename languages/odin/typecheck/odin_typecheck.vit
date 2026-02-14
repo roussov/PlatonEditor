@@ -1,0 +1,2 @@
+# odin typecheck module
+proc typecheck_entry() { }

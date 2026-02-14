@@ -1,0 +1,11 @@
+
+space platon.editor.terminal.shell
+
+form ShellSession {
+    id : int
+    active : bool
+}
+
+proc spawn(shell : string) -> ShellSession {}
+proc execute(s : ShellSession, command : string) {}
+proc terminate(s : ShellSession) {}

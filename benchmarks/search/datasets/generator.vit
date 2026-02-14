@@ -1,0 +1,5 @@
+space platon.bench.search.datasets
+
+proc generate_large_file(size_mb : int) {
+    # generate large searchable dataset
+}

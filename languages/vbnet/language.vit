@@ -1,0 +1,7 @@
+space platon.languages.vbnet
+
+form VbnetConfig {
+    category : string
+}
+
+proc register() {}

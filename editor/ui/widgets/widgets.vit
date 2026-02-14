@@ -1,0 +1,10 @@
+
+space platon.editor.ui.widgets
+
+form Widget {
+    id : string
+    visible : bool
+}
+
+proc mount(id : string) {}
+proc unmount(id : string) {}

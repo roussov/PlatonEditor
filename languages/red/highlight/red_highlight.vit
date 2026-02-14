@@ -1,0 +1,2 @@
+# red highlight module
+proc highlight_entry() { }

@@ -1,0 +1,175 @@
+space platon.editor.config.settings.engine.resolver
+
+# Settings Resolver Engine ULTRA MAX# Typed resolution, layered precedence, caching, snapshot safe, fallback aware
+form SettingValue {
+    raw : string
+    as_int : int
+    as_bool : bool
+    valid : bool
+}
+
+form ResolveRequest {
+    key : string
+    expect_type : string
+}
+
+form ResolveResult {
+    found : bool
+    value : SettingValue
+    source_layer : string
+}
+
+form ResolverState {
+    version : int
+    cache_hits : int
+    cache_misses : int
+}
+
+let resolver = ResolverState {
+    version: 1,
+    cache_hits: 0,
+    cache_misses: 0
+}
+
+# Internal version bump
+proc bump_resolver_version() {
+    resolver.version = resolver.version + 1
+}
+
+# Parse int stub
+proc parse_int(raw : string) -> SettingValue {
+
+# Real engine would parse safely
+    return SettingValue {
+        raw: raw,
+        as_int: 0,
+        as_bool: false,
+        valid: true
+    }
+}
+
+# Parse bool stub
+proc parse_bool(raw : string) -> SettingValue {
+
+    let v = raw == "true"
+
+    return SettingValue {
+        raw: raw,
+        as_int: 0,
+        as_bool: v,
+        valid: true
+    }
+}
+
+# Typed resolver
+proc resolve_typed(req : ResolveRequest) -> ResolveResult {
+
+# Layer precedence simulated: CLI > Workspace > User > Default
+    let simulated_raw = "true"
+
+    let parsed = SettingValue {
+        raw: simulated_raw,
+        as_int: 0,
+        as_bool: false,
+        valid: false
+    }
+
+    if req.expect_type == "int" {
+        set parsed = parse_int(simulated_raw)
+    }
+
+    if req.expect_type == "bool" {
+        set parsed = parse_bool(simulated_raw)
+    }
+
+    if parsed.valid {
+        resolver.cache_misses = resolver.cache_misses + 1
+    }
+
+    return ResolveResult {
+        found: true,
+        value: parsed,
+        source_layer: "cli"
+    }
+}
+
+# Fallback resolution
+proc resolve_with_fallback(
+    req : ResolveRequest,
+    fallback : string
+) -> ResolveResult {
+
+    let result = resolve_typed(req)
+
+    if not result.found {
+        let fallback_value = parse_bool(fallback)
+
+        return ResolveResult {
+            found: true,
+            value: fallback_value,
+            source_layer: "fallback"
+        }
+    }
+
+    return result
+}
+
+# Cache simulation
+proc simulate_cache_hit() {
+    resolver.cache_hits = resolver.cache_hits + 1
+}
+
+# Snapshot version access
+proc current_resolver_version() -> int {
+    return resolver.version
+}
+
+# Reset resolver state
+proc reset_resolver() {
+
+    resolver.cache_hits = 0
+    resolver.cache_misses = 0
+    bump_resolver_version()
+}
+
+# Stress typed resolution
+proc stress_resolve(iterations : int) {
+
+    let req = ResolveRequest {
+        key: "editor.enabled",
+        expect_type: "bool"
+    }
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        resolve_typed(req)
+
+        set i = i + 1
+    }
+}
+
+# Stress fallback resolution
+proc stress_fallback(iterations : int) {
+
+    let req = ResolveRequest {
+        key: "editor.unknown",
+        expect_type: "bool"
+    }
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        resolve_with_fallback(req, "false")
+
+        set i = i + 1
+    }
+}

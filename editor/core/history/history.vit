@@ -1,0 +1,10 @@
+space platon.editor.core.history
+
+form HistoryNode {
+    id : int
+    parent : int
+}
+
+proc undo() {}
+proc redo() {}
+proc jump_to(id : int) {}

@@ -1,0 +1,2 @@
+# typescript parser module
+proc parser_entry() { }

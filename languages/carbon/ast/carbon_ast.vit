@@ -1,0 +1,2 @@
+# carbon ast module
+proc ast_entry() { }

@@ -1,0 +1,7 @@
+
+name: Release Pipeline
+stages:
+  - tag_validation
+  - build_release
+  - sign
+  - publish

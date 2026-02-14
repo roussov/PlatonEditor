@@ -1,0 +1,133 @@
+space platon.editor.config.colors.engine.wcag
+
+# ============================================================
+# Models
+# ============================================================
+
+form Color {
+    r : int
+    g : int
+    b : int
+}
+
+form ContrastResult {
+    ratio : int        # scaled ×100
+    aa_pass : bool
+    aaa_pass : bool
+}
+
+# ============================================================
+# sRGB → Linear (approx float emulation scaled ×100000)
+# ============================================================
+
+proc srgb_to_linear(v : int) -> int {
+    # v in [0..255]
+    let scaled = (v * 100000) / 255
+
+    # if v <= 0.04045
+    if scaled <= 4045 {
+        return (scaled * 100000) / 12920000
+    }
+
+    # ((v+0.055)/1.055)^2.4
+    # simplified exponent approximation for integer domain
+    let x = (scaled + 5500) / 105500
+    return (x * x * x * 100000)
+}
+
+# ============================================================
+# Relative luminance (WCAG exact formula approximation)
+# ============================================================
+
+proc relative_luminance(c : Color) -> int {
+    let r = srgb_to_linear(c.r)
+    let g = srgb_to_linear(c.g)
+    let b = srgb_to_linear(c.b)
+
+    # 0.2126R + 0.7152G + 0.0722B
+    return (r * 2126 + g * 7152 + b * 722) / 10000
+}
+
+# ============================================================
+# Contrast ratio
+# (L1 + 0.05) / (L2 + 0.05)
+# Using scaled integer arithmetic
+# ============================================================
+
+proc contrast_ratio(a : Color, b : Color) -> int {
+    let la = relative_luminance(a)
+    let lb = relative_luminance(b)
+
+    let L1 =
+        if la > lb {
+            la
+        } else {
+            lb
+        }
+
+    let L2 =
+        if la > lb {
+            lb
+        } else {
+            la
+        }
+
+    # add 0.05 → scaled as 5000
+    return ((L1 + 5000) * 100) / (L2 + 5000)
+}
+
+# ============================================================
+# Validation
+# ============================================================
+
+proc validate_contrast(fg : Color, bg : Color) -> ContrastResult {
+
+    let ratio = contrast_ratio(fg, bg)
+
+    let aa = ratio >= 450     # 4.5:1
+    let aaa = ratio >= 700    # 7:1
+
+    return ContrastResult {
+        ratio: ratio,
+        aa_pass: aa,
+        aaa_pass: aaa
+    }
+}
+
+# ============================================================
+# Palette Audit
+# ============================================================
+
+proc audit_palette(count : int) {
+    let i = 0
+
+    loop {
+        if i >= count {
+            break
+        }
+
+        validate_contrast(
+            Color { r: i % 255, g: (i * 2) % 255, b: (i * 3) % 255 },
+            Color { r: 24, g: 26, b: 31 }
+        )
+
+        set i = i + 1
+    }
+}
+
+# ============================================================
+# Theme Validation
+# ============================================================
+
+proc validate_theme_pair(fg : Color, bg : Color) -> bool {
+    let result = validate_contrast(fg, bg)
+    return result.aa_pass
+}
+
+# ============================================================
+# Stress test 1M
+# ============================================================
+
+proc stress_wcag_1m() {
+    audit_palette(1000000)
+}

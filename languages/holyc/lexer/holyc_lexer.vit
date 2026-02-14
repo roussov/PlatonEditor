@@ -1,0 +1,5 @@
+space platon.languages.holyc.lexer
+
+proc lex(input : string) {
+    # legacy-aware lexer
+}

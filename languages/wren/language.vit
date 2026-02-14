@@ -1,0 +1,7 @@
+space platon.languages.wren
+
+form WrenConfig {
+    category : string
+}
+
+proc register() {}

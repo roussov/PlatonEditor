@@ -1,0 +1,4 @@
+{
+  "Ctrl+Alt+R": "run_current_file",
+  "Ctrl+Alt+T": "run_tests"
+}

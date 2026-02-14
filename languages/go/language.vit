@@ -1,0 +1,7 @@
+space platon.languages.go
+
+form GoConfig {
+    tier : string
+}
+
+proc register() {}

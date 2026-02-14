@@ -1,0 +1,7 @@
+space platon.languages.javascript
+
+form JavascriptConfig {
+    tier : string
+}
+
+proc register() {}

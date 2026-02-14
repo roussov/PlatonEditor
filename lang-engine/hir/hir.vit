@@ -1,0 +1,10 @@
+
+space platon.editor.lang_engine.hir
+
+form HirNode {
+    id : int
+    kind : string
+}
+
+proc lower_from_ast() {}
+proc resolve_symbols() {}

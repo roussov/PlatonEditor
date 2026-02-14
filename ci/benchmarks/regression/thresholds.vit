@@ -1,0 +1,6 @@
+space platon.ci.benchmarks.regression
+
+form Threshold {
+    metric : string
+    max_allowed_delta_percent : int
+}

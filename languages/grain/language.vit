@@ -1,0 +1,7 @@
+space platon.languages.grain
+
+form GrainConfig {
+    category : string
+}
+
+proc register() {}

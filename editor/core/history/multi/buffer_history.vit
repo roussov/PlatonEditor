@@ -1,0 +1,4 @@
+space platon.editor.core.history.multi
+
+proc register_buffer(id : int) {}
+proc get_history(id : int) {}

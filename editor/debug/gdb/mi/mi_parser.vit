@@ -1,0 +1,6 @@
+space platon.editor.debug.gdb.mi
+
+proc parse(line : string) {}
+proc serialize(cmd : string) -> string {
+    give ""
+}

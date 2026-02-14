@@ -1,0 +1,2 @@
+# hack highlight module
+proc highlight_entry() { }

@@ -1,0 +1,2 @@
+# ring parser module
+proc parser_entry() { }

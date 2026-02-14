@@ -1,0 +1,6 @@
+space platon.editor.core.cursor
+
+form Position {
+    line : int
+    column : int
+}

@@ -1,0 +1,7 @@
+space platon.languages.mint
+
+form MintConfig {
+    category : string
+}
+
+proc register() {}

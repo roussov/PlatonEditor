@@ -1,0 +1,7 @@
+space platon.languages.groovy
+
+form GroovyConfig {
+    tier : string
+}
+
+proc register() {}

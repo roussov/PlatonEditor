@@ -1,0 +1,134 @@
+space platon.editor.config.keybindings.engine.conflict_detector
+
+# Keybinding Conflict Detector ULTRA MAX# Detect exact, prefix, mode and shadow conflicts
+form KeyStroke {
+    code : int
+    ctrl : bool
+    alt  : bool
+    shift : bool
+}
+
+form Binding {
+    mode : string
+    steps_count : int
+    command : string
+}
+
+form ConflictResult {
+    exact_conflict : bool
+    prefix_conflict : bool
+    mode_conflict : bool
+    shadowed : bool
+}
+
+const MAX_BINDINGS : int = 1024
+
+let total_bindings : int = 0
+
+# Helpers
+proc mode_equal(a : string, b : string) -> bool {
+    return a == b
+}
+
+# Exact conflict
+proc detect_exact_conflict(
+    existing : Binding,
+    incoming : Binding
+) -> bool {
+
+    if not mode_equal(existing.mode, incoming.mode) {
+        return false
+    }
+
+    return existing.steps_count == incoming.steps_count
+        and existing.command != incoming.command
+}
+
+# Prefix conflict
+proc detect_prefix_conflict(
+    existing : Binding,
+    incoming : Binding
+) -> bool {
+
+    if not mode_equal(existing.mode, incoming.mode) {
+        return false
+    }
+
+    if existing.steps_count < incoming.steps_count {
+        return true
+    }
+
+    if incoming.steps_count < existing.steps_count {
+        return true
+    }
+
+    return false
+}
+
+# Mode conflict
+proc detect_mode_conflict(
+    existing : Binding,
+    incoming : Binding
+) -> bool {
+
+    if existing.steps_count != incoming.steps_count {
+        return false
+    }
+
+    return existing.mode != incoming.mode
+}
+
+# Shadow detection
+proc detect_shadowing(
+    existing : Binding,
+    incoming : Binding
+) -> bool {
+
+    if existing.steps_count > incoming.steps_count {
+        return true
+    }
+
+    return false
+}
+
+# Master evaluation
+proc evaluate_conflict(
+    existing : Binding,
+    incoming : Binding
+) -> ConflictResult {
+
+    return ConflictResult {
+        exact_conflict: detect_exact_conflict(existing, incoming),
+        prefix_conflict: detect_prefix_conflict(existing, incoming),
+        mode_conflict: detect_mode_conflict(existing, incoming),
+        shadowed: detect_shadowing(existing, incoming)
+    }
+}
+
+# Stress test
+proc stress_conflict_detection(iterations : int) {
+
+    let existing = Binding {
+        mode: "normal",
+        steps_count: 2,
+        command: "comment.line"
+    }
+
+    let incoming = Binding {
+        mode: "normal",
+        steps_count: 2,
+        command: "duplicate.line"
+    }
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        evaluate_conflict(existing, incoming)
+
+        set i = i + 1
+    }
+}

@@ -1,0 +1,5 @@
+
+space platon.lsp.cache.snapshot
+
+proc create_snapshot() {}
+proc restore_snapshot() {}

@@ -1,0 +1,7 @@
+space platon.languages.modula2
+
+form Modula2Config {
+    category : string
+}
+
+proc register() {}

@@ -1,0 +1,2 @@
+# wren lexer module
+proc lexer_entry() { }

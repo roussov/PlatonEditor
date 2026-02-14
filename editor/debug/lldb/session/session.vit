@@ -1,0 +1,9 @@
+space platon.editor.debug.lldb.session
+
+form LLDBSession {
+    id : int
+    active : bool
+}
+
+proc start() {}
+proc stop() {}

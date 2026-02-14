@@ -1,0 +1,10 @@
+
+space platon.editor.term.tty
+
+form TTY {
+    fd : int
+    active : bool
+}
+
+proc open() -> TTY {}
+proc close(t : TTY) {}

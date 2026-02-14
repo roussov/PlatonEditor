@@ -1,0 +1,7 @@
+space platon.languages.plsql
+
+form PlsqlConfig {
+    category : string
+}
+
+proc register() {}

@@ -1,0 +1,7 @@
+space platon.languages.rego
+
+form RegoConfig {
+    category : string
+}
+
+proc register() {}

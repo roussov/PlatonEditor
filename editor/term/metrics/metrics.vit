@@ -1,0 +1,13 @@
+
+space platon.editor.term.metrics
+
+form TermCounter {
+    value : int
+}
+
+form TermHistogram {
+    buckets : int
+}
+
+proc inc(c : TermCounter) {}
+proc observe(h : TermHistogram, value : int) {}

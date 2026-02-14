@@ -1,0 +1,6 @@
+
+space platon.lsp.cache.metrics
+
+proc hit_rate() {}
+proc miss_rate() {}
+proc memory_usage() {}

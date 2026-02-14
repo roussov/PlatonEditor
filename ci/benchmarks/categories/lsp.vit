@@ -1,0 +1,5 @@
+space platon.ci.benchmarks.categories
+
+proc run() {
+    # run CI benchmark category: lsp
+}

@@ -1,0 +1,7 @@
+space platon.languages.json
+
+form JsonConfig {
+    category : string
+}
+
+proc register() {}

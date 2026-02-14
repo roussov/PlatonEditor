@@ -1,0 +1,5 @@
+space platon.editor.core.buffer.transaction
+
+proc begin() {}
+proc commit() {}
+proc rollback() {}

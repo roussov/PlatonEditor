@@ -1,0 +1,5 @@
+space platon.editor.core.gap.simd
+
+proc simd_move() {
+    # SIMD accelerated memory move
+}

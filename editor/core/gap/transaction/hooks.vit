@@ -1,0 +1,4 @@
+space platon.editor.core.gap.transaction
+
+proc before_edit() {}
+proc after_edit() {}

@@ -1,0 +1,11 @@
+
+space platon.lsp.transport
+
+form Transport {
+    name : string
+}
+
+proc start() {}
+proc stop() {}
+proc send(msg : string) {}
+proc receive() {}

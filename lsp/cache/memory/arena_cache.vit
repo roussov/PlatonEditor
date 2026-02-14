@@ -1,0 +1,5 @@
+
+space platon.lsp.cache.memory
+
+proc allocate(size : int) {}
+proc reset() {}

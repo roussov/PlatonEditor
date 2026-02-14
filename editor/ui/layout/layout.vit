@@ -1,0 +1,11 @@
+
+space platon.editor.ui.layout
+
+form LayoutNode {
+    id : string
+    size : int
+}
+
+proc create_root() {}
+proc split(node : string, direction : string) {}
+proc resize(node : string, size : int) {}

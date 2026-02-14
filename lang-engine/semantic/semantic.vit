@@ -1,0 +1,9 @@
+
+space platon.editor.lang_engine.semantic
+
+form SemanticResult {
+    success : bool
+}
+
+proc analyze() {}
+proc reanalyze_incremental() {}

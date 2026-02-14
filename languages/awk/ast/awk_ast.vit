@@ -1,0 +1,2 @@
+# awk ast module
+proc ast_entry() { }

@@ -1,0 +1,7 @@
+space platon.languages.chapel
+
+form ChapelConfig {
+    category : string
+}
+
+proc register() {}

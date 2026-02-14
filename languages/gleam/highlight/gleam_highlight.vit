@@ -1,0 +1,2 @@
+# gleam highlight module
+proc highlight_entry() { }

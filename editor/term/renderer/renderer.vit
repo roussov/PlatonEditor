@@ -1,0 +1,13 @@
+
+space platon.editor.term.renderer
+
+form Renderer {
+    width : int
+    height : int
+}
+
+proc init(w : int, h : int) -> Renderer {
+    give Renderer { width: w, height: h }
+}
+
+proc render_frame(r : Renderer) {}

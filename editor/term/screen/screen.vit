@@ -1,0 +1,13 @@
+
+space platon.editor.term.screen
+
+form Screen {
+    width : int
+    height : int
+}
+
+proc init(w : int, h : int) -> Screen {
+    give Screen { width: w, height: h }
+}
+
+proc resize(s : Screen, w : int, h : int) {}

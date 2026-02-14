@@ -1,0 +1,6 @@
+
+space platon.lsp.client.runtime
+
+form CancellationToken { cancelled : bool }
+
+proc cancel() {}

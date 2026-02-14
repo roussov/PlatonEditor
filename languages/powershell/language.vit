@@ -1,0 +1,7 @@
+space platon.languages.powershell
+
+form PowershellConfig {
+    tier : string
+}
+
+proc register() {}

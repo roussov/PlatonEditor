@@ -1,0 +1,9 @@
+space platon.languages.holyc
+
+form HolycConfig {
+    version : string
+    legacy_mode : bool
+}
+
+proc register() {}
+proc capabilities() {}

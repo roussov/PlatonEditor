@@ -1,0 +1,6 @@
+space platon.ci.benchmarks.regression
+
+proc compare(current : int, baseline : int) -> bool {
+    # return true if regression detected
+    give false
+}

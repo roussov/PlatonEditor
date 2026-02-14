@@ -1,0 +1,7 @@
+space platon.languages.powerscript
+
+form PowerscriptConfig {
+    category : string
+}
+
+proc register() {}

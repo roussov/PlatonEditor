@@ -1,0 +1,10 @@
+space platon.editor.runtime.profiler
+
+form Span {
+    name : string
+    start_ns : int
+    end_ns : int
+}
+
+proc begin_span(name : string) -> Span {}
+proc end_span(s : Span) {}

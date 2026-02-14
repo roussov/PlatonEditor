@@ -1,0 +1,2 @@
+# verilog lsp module
+proc lsp_entry() { }

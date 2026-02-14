@@ -1,0 +1,5 @@
+space platon.editor.core.gap.predict
+
+proc predict_next_size(current : int) -> int {
+    give current * 2
+}

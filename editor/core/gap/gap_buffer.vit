@@ -1,0 +1,15 @@
+space platon.editor.core.gap
+
+form GapBuffer {
+    capacity : int
+    gap_start : int
+    gap_end : int
+}
+
+proc init(cap : int) -> GapBuffer {
+    give GapBuffer { capacity: cap, gap_start: 0, gap_end: cap }
+}
+
+proc insert(g : GapBuffer, ch : string) {}
+proc delete(g : GapBuffer) {}
+proc move_gap(g : GapBuffer, pos : int) {}

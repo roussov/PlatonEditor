@@ -1,0 +1,2 @@
+# cpp lsp module
+proc lsp_entry() { }

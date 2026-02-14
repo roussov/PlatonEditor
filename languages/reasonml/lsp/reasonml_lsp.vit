@@ -1,0 +1,2 @@
+# reasonml lsp module
+proc lsp_entry() { }
