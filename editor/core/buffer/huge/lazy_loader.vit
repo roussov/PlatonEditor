@@ -1,1 +1,250 @@
-#  lazy chunk loading
+space platon.editor.core.buffer.huge.lazy_loader
+
+pull platon.editor.core.buffer.huge.chunk_manager as chunk
+
+<<< Huge File Lazy Loader ULTRA MAX+++ >>>
+<<< Demand loading, read-ahead prefetch, eviction hints, IO simulation >>>
+
+form PrefetchRequest {
+    chunk_index : int
+    priority : int
+}
+
+form LazyLoader {
+    manager : chunk.ChunkManager
+    prefetch_queue : [PrefetchRequest]
+    io_operations : int
+    evictions : int
+    version : int
+}
+
+<<< Create lazy loader >>>
+
+proc new(manager : chunk.ChunkManager) -> LazyLoader {
+
+    return LazyLoader {
+        manager: manager,
+        prefetch_queue: [],
+        io_operations: 0,
+        evictions: 0,
+        version: 1
+    }
+}
+
+<<< Simulate IO load cost >>>
+
+proc simulate_io(ll : LazyLoader) -> LazyLoader {
+
+    set ll.io_operations = ll.io_operations + 1
+    set ll.version = ll.version + 1
+
+    return ll
+}
+
+<<< Load chunk on demand >>>
+
+proc load_on_demand(
+    ll : LazyLoader,
+    offset : int
+) -> LazyLoader {
+
+    let idx = chunk.chunk_index(ll.manager, offset)
+
+    set ll.manager = chunk.load_chunk(ll.manager, idx)
+    set ll = simulate_io(ll)
+
+    return ll
+}
+
+<<< Schedule prefetch >>>
+
+proc schedule_prefetch(
+    ll : LazyLoader,
+    index : int,
+    priority : int
+) -> LazyLoader {
+
+    set ll.prefetch_queue =
+        ll.prefetch_queue +
+        [PrefetchRequest {
+            chunk_index: index,
+            priority: priority
+        }]
+
+    set ll.version = ll.version + 1
+
+    return ll
+}
+
+<<< Execute prefetch queue >>>
+
+proc run_prefetch(ll : LazyLoader) -> LazyLoader {
+
+    let i = 0
+
+    loop {
+
+        if i >= ll.prefetch_queue.length {
+            break
+        }
+
+        let req = ll.prefetch_queue[i]
+
+        set ll.manager =
+            chunk.load_chunk(ll.manager, req.chunk_index)
+
+        set ll = simulate_io(ll)
+
+        set i = i + 1
+    }
+
+    set ll.prefetch_queue = []
+
+    return ll
+}
+
+<<< Read-ahead strategy >>>
+
+proc read_ahead(
+    ll : LazyLoader,
+    current_offset : int,
+    window : int
+) -> LazyLoader {
+
+    let base_index =
+        chunk.chunk_index(ll.manager, current_offset)
+
+    let i = 1
+
+    loop {
+
+        if i > window {
+            break
+        }
+
+        let next_index = base_index + i
+
+        if next_index < ll.manager.chunks.length {
+
+            set ll =
+                schedule_prefetch(ll, next_index, 1)
+        }
+
+        set i = i + 1
+    }
+
+    return ll
+}
+
+<<< Evict clean chunks beyond window >>>
+
+proc evict_outside_window(
+    ll : LazyLoader,
+    center_index : int,
+    window : int
+) -> LazyLoader {
+
+    let i = 0
+
+    loop {
+
+        if i >= ll.manager.chunks.length {
+            break
+        }
+
+        if i < center_index - window or
+           i > center_index + window {
+
+            let before =
+                ll.manager.loaded_chunks
+
+            set ll.manager =
+                chunk.unload_chunk(ll.manager, i)
+
+            if ll.manager.loaded_chunks < before {
+                set ll.evictions = ll.evictions + 1
+            }
+        }
+
+        set i = i + 1
+    }
+
+    set ll.version = ll.version + 1
+
+    return ll
+}
+
+<<< Access with full lazy strategy >>>
+
+proc access(
+    ll : LazyLoader,
+    offset : int,
+    prefetch_window : int
+) -> LazyLoader {
+
+    set ll = load_on_demand(ll, offset)
+
+    set ll = read_ahead(ll, offset, prefetch_window)
+
+    set ll = run_prefetch(ll)
+
+    let idx = chunk.chunk_index(ll.manager, offset)
+
+    set ll =
+        evict_outside_window(ll, idx, prefetch_window)
+
+    return ll
+}
+
+<<< Metrics accessors >>>
+
+proc io_count(ll : LazyLoader) -> int {
+    return ll.io_operations
+}
+
+proc eviction_count(ll : LazyLoader) -> int {
+    return ll.evictions
+}
+
+proc loaded_chunks(ll : LazyLoader) -> int {
+    return chunk.loaded_count(ll.manager)
+}
+
+<<< Stress scrolling simulation >>>
+
+proc stress_scroll(
+    ll : LazyLoader,
+    iterations : int,
+    step : int
+) -> LazyLoader {
+
+    let i = 0
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        let offset =
+            (i * step) % ll.manager.total_size
+
+        set ll = access(ll, offset, 2)
+
+        set i = i + 1
+    }
+
+    return ll
+}
+
+<<< Full lazy loader suite >>>
+
+proc run_lazy_loader_ultra() {
+
+    let cm =
+        chunk.new(300000000, chunk.DEFAULT_CHUNK_SIZE)
+
+    let ll = new(cm)
+
+    stress_scroll(ll, 5000, 131072)
+}

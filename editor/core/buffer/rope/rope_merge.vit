@@ -1,1 +1,253 @@
-#  rope merge logic
+space platon.editor.core.buffer.rope.rope_merge
+
+pull platon.editor.core.buffer.rope.rope_balance as balance
+
+<<< Rope Merge ULTRA MAX+++ >>>
+<<< Concatenation, subtree normalization, optional rebalance threshold >>>
+
+
+form RopeNode {
+    left : *RopeNode
+    right : *RopeNode
+    weight : int
+    height : int
+    text : string
+}
+
+form MergeStats {
+    merges : int
+    normalizations : int
+    rebalances : int
+    version : int
+}
+
+form RopeMergeEngine {
+    rebalance_threshold : int
+    stats : MergeStats
+}
+
+const DEFAULT_REBALANCE_THRESHOLD : int = 3
+
+<<< Create merge engine >>>
+
+proc new(threshold : int) -> RopeMergeEngine {
+
+    let t = threshold
+
+    if t <= 0 {
+        set t = DEFAULT_REBALANCE_THRESHOLD
+    }
+
+    return RopeMergeEngine {
+        rebalance_threshold: t,
+        stats: MergeStats {
+            merges: 0,
+            normalizations: 0,
+            rebalances: 0,
+            version: 1
+        }
+    }
+}
+
+<<< Height helper >>>
+
+proc height(n : *RopeNode) -> int {
+
+    if n == null {
+        return 0
+    }
+
+    return n.height
+}
+
+<<< Update node metadata >>>
+
+proc update(n : *RopeNode) -> *RopeNode {
+
+    if n == null {
+        return n
+    }
+
+    let lh = height(n.left)
+    let rh = height(n.right)
+
+    if lh > rh {
+        set n.height = lh + 1
+    } else {
+        set n.height = rh + 1
+    }
+
+    if n.left != null {
+        set n.weight =
+            n.left.weight + n.text.length
+    } else {
+        set n.weight =
+            n.text.length
+    }
+
+    return n
+}
+
+<<< Create leaf node >>>
+
+proc leaf(text : string) -> *RopeNode {
+
+    return RopeNode {
+        left: null,
+        right: null,
+        weight: text.length,
+        height: 1,
+        text: text
+    }
+}
+
+<<< Concatenate two ropes (simple merge) >>>
+
+proc concat(
+    rme : RopeMergeEngine,
+    left : *RopeNode,
+    right : *RopeNode
+) -> *RopeNode {
+
+    if left == null {
+        return right
+    }
+
+    if right == null {
+        return left
+    }
+
+    let root = RopeNode {
+        left: left,
+        right: right,
+        weight: left.weight + left.text.length,
+        height: 1,
+        text: ""
+    }
+
+    set root = update(root)
+
+    set rme.stats.merges =
+        rme.stats.merges + 1
+
+    set rme.stats.version =
+        rme.stats.version + 1
+
+    <<< Optional rebalance if height difference too large >>>
+
+    let diff =
+        height(left) - height(right)
+
+    if diff > rme.rebalance_threshold or
+       diff < -rme.rebalance_threshold {
+
+        let bal = balance.new()
+        set root = balance.rebalance(bal, root)
+
+        set rme.stats.rebalances =
+            rme.stats.rebalances + 1
+    }
+
+    return root
+}
+
+<<< Normalize small adjacent leaves >>>
+
+proc normalize(
+    rme : RopeMergeEngine,
+    node : *RopeNode
+) -> *RopeNode {
+
+    if node == null {
+        return node
+    }
+
+    if node.left == null and
+       node.right == null {
+        return node
+    }
+
+    if node.left != null and
+       node.right != null and
+       node.left.left == null and
+       node.left.right == null and
+       node.right.left == null and
+       node.right.right == null {
+
+        let merged_text =
+            node.left.text + node.right.text
+
+        let new_leaf = leaf(merged_text)
+
+        set rme.stats.normalizations =
+            rme.stats.normalizations + 1
+
+        set rme.stats.version =
+            rme.stats.version + 1
+
+        return new_leaf
+    }
+
+    set node.left =
+        normalize(rme, node.left)
+
+    set node.right =
+        normalize(rme, node.right)
+
+    return update(node)
+}
+
+<<< Merge with normalization + optional rebuild >>>
+
+proc merge_full(
+    rme : RopeMergeEngine,
+    left : *RopeNode,
+    right : *RopeNode
+) -> *RopeNode {
+
+    let root =
+        concat(rme, left, right)
+
+    set root =
+        normalize(rme, root)
+
+    return root
+}
+
+<<< Stress merge workload >>>
+
+proc stress_merge(
+    rme : RopeMergeEngine,
+    iterations : int
+) -> *RopeNode {
+
+    let i = 0
+
+    let root = leaf("root")
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        let new_leaf =
+            leaf("chunk")
+
+        set root =
+            merge_full(rme, root, new_leaf)
+
+        set i = i + 1
+    }
+
+    return root
+}
+
+<<< Full rope merge suite >>>
+
+proc run_rope_merge_ultra() {
+
+    let rme = new(DEFAULT_REBALANCE_THRESHOLD)
+
+    stress_merge(rme, 2000)
+}

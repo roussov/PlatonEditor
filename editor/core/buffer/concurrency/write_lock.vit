@@ -1,1 +1,223 @@
-#  write locking model
+space platon.editor.core.buffer.concurrency.write_lock
+
+<<< Write Lock Engine ULTRA MAX+++ >>>
+<<< Writer priority, fairness queue simulation, starvation protection >>>
+
+form WriteLockState {
+    readers : int
+    writer_active : bool
+    waiting_writers : int
+    waiting_readers : int
+    version : int
+    write_acquisitions : int
+    write_failures : int
+}
+
+let lock = WriteLockState {
+    readers: 0,
+    writer_active: false,
+    waiting_writers: 0,
+    waiting_readers: 0,
+    version: 1,
+    write_acquisitions: 0,
+    write_failures: 0
+}
+
+<<< Internal: writer priority rule >>>
+
+proc writer_priority_block() -> bool {
+
+    if lock.waiting_writers > 0 {
+        return true
+    }
+
+    return false
+}
+
+<<< Acquire write lock with priority >>>
+
+proc acquire_write() -> bool {
+
+    if lock.writer_active or lock.readers > 0 {
+
+        set lock.waiting_writers =
+            lock.waiting_writers + 1
+
+        set lock.write_failures =
+            lock.write_failures + 1
+
+        return false
+    }
+
+    set lock.writer_active = true
+    set lock.version = lock.version + 1
+    set lock.write_acquisitions =
+        lock.write_acquisitions + 1
+
+    return true
+}
+
+<<< Release write lock >>>
+
+proc release_write() {
+
+    if lock.writer_active {
+
+        set lock.writer_active = false
+        set lock.version = lock.version + 1
+
+        if lock.waiting_writers > 0 {
+            set lock.waiting_writers =
+                lock.waiting_writers - 1
+        }
+    }
+}
+
+<<< Acquire read respecting writer priority >>>
+
+proc acquire_read() -> bool {
+
+    if lock.writer_active or writer_priority_block() {
+
+        set lock.waiting_readers =
+            lock.waiting_readers + 1
+
+        return false
+    }
+
+    set lock.readers = lock.readers + 1
+    set lock.version = lock.version + 1
+
+    return true
+}
+
+<<< Release read >>>
+
+proc release_read() {
+
+    if lock.readers > 0 {
+
+        set lock.readers = lock.readers - 1
+        set lock.version = lock.version + 1
+    }
+}
+
+<<< Upgrade read to write attempt >>>
+
+proc try_upgrade() -> bool {
+
+    if lock.readers == 1 and not lock.writer_active {
+
+        set lock.readers = 0
+        set lock.writer_active = true
+        set lock.version = lock.version + 1
+        set lock.write_acquisitions =
+            lock.write_acquisitions + 1
+
+        return true
+    }
+
+    return false
+}
+
+<<< Downgrade write to read >>>
+
+proc downgrade() {
+
+    if lock.writer_active {
+
+        set lock.writer_active = false
+        set lock.readers = 1
+        set lock.version = lock.version + 1
+    }
+}
+
+<<< Statistics accessors >>>
+
+proc active_readers() -> int {
+    return lock.readers
+}
+
+proc is_writer_active() -> bool {
+    return lock.writer_active
+}
+
+proc total_write_acquisitions() -> int {
+    return lock.write_acquisitions
+}
+
+proc total_write_failures() -> int {
+    return lock.write_failures
+}
+
+proc waiting_writer_count() -> int {
+    return lock.waiting_writers
+}
+
+proc waiting_reader_count() -> int {
+    return lock.waiting_readers
+}
+
+<<< Reset lock state >>>
+
+proc reset_write_lock() {
+
+    set lock.readers = 0
+    set lock.writer_active = false
+    set lock.waiting_writers = 0
+    set lock.waiting_readers = 0
+    set lock.version = 1
+    set lock.write_acquisitions = 0
+    set lock.write_failures = 0
+}
+
+<<< Stress heavy write contention >>>
+
+proc stress_write_contention(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        acquire_write()
+        release_write()
+
+        set i = i + 1
+    }
+}
+
+<<< Stress mixed read/write contention >>>
+
+proc stress_mixed(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        if i % 4 == 0 {
+            acquire_write()
+            release_write()
+        } else {
+            acquire_read()
+            release_read()
+        }
+
+        set i = i + 1
+    }
+}
+
+<<< Full write lock suite >>>
+
+proc run_write_lock_ultra() {
+
+    reset_write_lock()
+
+    stress_write_contention(100000)
+    stress_mixed(150000)
+}

@@ -1,1 +1,182 @@
-#  stress test 2
+space platon.editor.core.buffer.tests.buffer_test_2
+
+pull platon.editor.core.buffer.piece_table.table as table
+pull platon.editor.core.buffer.piece_table.snapshot as snapshot
+pull platon.editor.core.buffer.piece_table.history as history
+pull platon.editor.core.buffer.rope.rope_node as rope_node
+pull platon.editor.core.buffer.rope.rope_split as rope_split
+pull platon.editor.core.buffer.rope.rope_merge as rope_merge
+
+<<< Buffer Integration Test 2 ULTRA MAX+++ >>>
+<<< Stress insert/delete cycles + snapshot restore + rope integrity validation >>>
+
+
+proc assert_true(cond : bool) {
+
+    if not cond {
+        panic("Assertion failed")
+    }
+}
+
+proc test_piece_table_stress() {
+
+    let te = table.new_engine()
+    let pt = table.new("A")
+
+    let i = 0
+
+    loop {
+
+        if i >= 200 {
+            break
+        }
+
+        set pt =
+            table.insert(te, pt, pt.total_length, "B")
+
+        if i % 3 == 0 and pt.total_length > 2 {
+
+            set pt =
+                table.delete(te, pt, 1, 1)
+        }
+
+        set i = i + 1
+    }
+
+    let result =
+        table.materialize(pt)
+
+    assert_true(result.length > 0)
+}
+
+proc test_snapshot_restore() {
+
+    let te = table.new_engine()
+    let pt = table.new("Hello")
+
+    let se = snapshot.new()
+
+    set pt =
+        table.insert(te, pt, 5, " World")
+
+    set se =
+        snapshot.create_snapshot(
+            se,
+            pt.pieces,
+            0
+        )
+
+    let saved_id = 1
+
+    set pt =
+        table.insert(te, pt, 0, "Ultra ")
+
+    let before_restore =
+        table.materialize(pt)
+
+    assert_true(before_restore.length > 5)
+
+    let restored_pieces =
+        snapshot.restore_snapshot(
+            se,
+            saved_id
+        )
+
+    set pt.pieces = restored_pieces
+
+    let after_restore =
+        table.materialize(pt)
+
+    assert_true(after_restore == "Hello World")
+}
+
+proc test_history_with_snapshot() {
+
+    let h = history.new()
+
+    set h = history.begin(h)
+
+    set h =
+        history.record(
+            h,
+            history.OperationKind.Insert,
+            0,
+            5,
+            "Hello"
+        )
+
+    set h = history.commit(h)
+
+    set h = history.begin(h)
+
+    set h =
+        history.record(
+            h,
+            history.OperationKind.Insert,
+            5,
+            6,
+            " World"
+        )
+
+    set h = history.commit(h)
+
+    assert_true(history.undo_depth(h) == 2)
+
+    set h = history.undo(h)
+
+    assert_true(history.undo_depth(h) == 1)
+
+    set h = history.redo(h)
+
+    assert_true(history.undo_depth(h) == 2)
+}
+
+proc test_rope_heavy_split_merge() {
+
+    let rne = rope_node.new()
+
+    let root =
+        rope_node.leaf(rne, "UltraMassiveBufferEngine")
+
+    let rse = rope_split.new()
+    let rme = rope_merge.new(3)
+
+    let i = 0
+    let current = root
+
+    loop {
+
+        if i >= 100 {
+            break
+        }
+
+        let parts =
+            rope_split.split_rebalanced(
+                rse,
+                current,
+                i % 10
+            )
+
+        set current =
+            rope_merge.merge_full(
+                rme,
+                parts[0],
+                parts[1]
+            )
+
+        set i = i + 1
+    }
+
+    let first_char =
+        rope_node.char_at(current, 0)
+
+    assert_true(first_char == "U")
+}
+
+proc run_all_tests() {
+
+    test_piece_table_stress()
+    test_snapshot_restore()
+    test_history_with_snapshot()
+    test_rope_heavy_split_merge()
+}

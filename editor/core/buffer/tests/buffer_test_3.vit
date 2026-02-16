@@ -1,1 +1,262 @@
-#  stress test 3
+space platon.editor.core.buffer.tests.buffer_test_3
+
+pull platon.editor.core.buffer.piece_table.table as table
+pull platon.editor.core.buffer.piece_table.snapshot as snapshot
+pull platon.editor.core.buffer.piece_table.history as history
+pull platon.editor.core.buffer.rope.rope_node as rope_node
+pull platon.editor.core.buffer.rope.rope_split as rope_split
+pull platon.editor.core.buffer.rope.rope_merge as rope_merge
+
+<<< Buffer Integration Test 3 ULTRA MAX+++ >>>
+<<< Randomized fuzz editing + invariant validation + large buffer simulation >>>
+
+
+proc assert_true(cond : bool) {
+    if not cond {
+        panic("Assertion failed")
+    }
+}
+
+<<< Deterministic pseudo random generator >>>
+
+form Rng {
+    seed : int
+}
+
+proc rng_new(seed : int) -> Rng {
+    return Rng { seed: seed }
+}
+
+proc rng_next(r : Rng) -> Rng {
+    set r.seed = (r.seed * 1103515245 + 12345) % 2147483647
+    return r
+}
+
+proc rng_value(r : Rng, max : int) -> [Rng] {
+
+    if max <= 0 {
+        return [r, 0]
+    }
+
+    set r = rng_next(r)
+
+    let value = r.seed % max
+
+    return [r, value]
+}
+
+<<< Fuzz piece table operations >>>
+
+proc fuzz_piece_table() {
+
+    let te = table.new_engine()
+    let pt = table.new("")
+
+    let r = rng_new(1337)
+
+    let i = 0
+
+    loop {
+
+        if i >= 500 {
+            break
+        }
+
+        let result = rng_value(r, 3)
+        set r = result[0]
+        let op = result[1]
+
+        if op == 0 {
+
+            let result2 =
+                rng_value(r, pt.total_length + 1)
+
+            set r = result2[0]
+            let pos = result2[1]
+
+            set pt =
+                table.insert(te, pt, pos, "X")
+
+        } else if op == 1 and pt.total_length > 0 {
+
+            let result3 =
+                rng_value(r, pt.total_length)
+
+            set r = result3[0]
+            let pos2 = result3[1]
+
+            set pt =
+                table.delete(te, pt, pos2, 1)
+
+        } else {
+
+            let result4 =
+                rng_value(r, pt.total_length + 1)
+
+            set r = result4[0]
+            let pos3 = result4[1]
+
+            set pt =
+                table.insert(te, pt, pos3, "Y")
+        }
+
+        let material =
+            table.materialize(pt)
+
+        assert_true(material.length == pt.total_length)
+
+        set i = i + 1
+    }
+}
+
+<<< Snapshot branching simulation >>>
+
+proc snapshot_branch_test() {
+
+    let te = table.new_engine()
+    let pt = table.new("Root")
+
+    let se = snapshot.new()
+
+    set pt =
+        table.insert(te, pt, 4, "A")
+
+    set se =
+        snapshot.create_snapshot(
+            se,
+            pt.pieces,
+            0
+        )
+
+    set pt =
+        table.insert(te, pt, 5, "B")
+
+    set se =
+        snapshot.create_snapshot(
+            se,
+            pt.pieces,
+            1
+        )
+
+    let restored =
+        snapshot.restore_snapshot(se, 1)
+
+    set pt.pieces = restored
+
+    let text =
+        table.materialize(pt)
+
+    assert_true(text == "RootA")
+}
+
+<<< Large rope simulation >>>
+
+proc rope_large_simulation() {
+
+    let rne = rope_node.new()
+
+    let root =
+        rope_node.leaf(rne, "A")
+
+    let rme = rope_merge.new(3)
+    let rse = rope_split.new()
+
+    let i = 0
+    let current = root
+
+    loop {
+
+        if i >= 1000 {
+            break
+        }
+
+        let leaf =
+            rope_node.leaf(rne, "B")
+
+        set current =
+            rope_merge.merge_full(
+                rme,
+                current,
+                leaf
+            )
+
+        if i % 7 == 0 {
+
+            let parts =
+                rope_split.split_rebalanced(
+                    rse,
+                    current,
+                    i % 5
+                )
+
+            set current =
+                rope_merge.merge_full(
+                    rme,
+                    parts[0],
+                    parts[1]
+                )
+        }
+
+        set i = i + 1
+    }
+
+    let first =
+        rope_node.char_at(current, 0)
+
+    assert_true(first == "A")
+}
+
+<<< History deep stack test >>>
+
+proc history_deep_stack() {
+
+    let h = history.new()
+
+    let i = 0
+
+    loop {
+
+        if i >= 300 {
+            break
+        }
+
+        set h = history.begin(h)
+
+        set h =
+            history.record(
+                h,
+                history.OperationKind.Insert,
+                i,
+                1,
+                "Z"
+            )
+
+        set h = history.commit(h)
+
+        set i = i + 1
+    }
+
+    assert_true(history.undo_depth(h) == 300)
+
+    let j = 0
+
+    loop {
+
+        if j >= 150 {
+            break
+        }
+
+        set h = history.undo(h)
+        set j = j + 1
+    }
+
+    assert_true(history.undo_depth(h) == 150)
+}
+
+proc run_all_tests() {
+
+    fuzz_piece_table()
+    snapshot_branch_test()
+    rope_large_simulation()
+    history_deep_stack()
+}

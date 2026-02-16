@@ -1,1 +1,228 @@
-#  insert benchmark
+space platon.editor.core.buffer.bench.buffer_insert_bench
+
+<<< Buffer Insert Benchmark ULTRA MAX+++ >>>
+<<< Gap movement, expansion cost, locality simulation, stress scenarios >>>
+
+form InsertMetrics {
+    inserts : int
+    chars_inserted : int
+    total_cost_units : int
+    max_single_insert_cost : int
+}
+
+form BufferState {
+    size : int
+    capacity : int
+    gap_position : int
+    version : int
+    expansions : int
+}
+
+let buffer = BufferState {
+    size: 1000000,
+    capacity: 1200000,
+    gap_position: 500000,
+    version: 1,
+    expansions: 0
+}
+
+<<< Move gap cost simulation >>>
+
+proc move_gap_to(position : int) -> int {
+
+    let distance = 0
+
+    if position > buffer.gap_position {
+        set distance = position - buffer.gap_position
+    } else {
+        set distance = buffer.gap_position - position
+    }
+
+    set buffer.gap_position = position
+
+    return distance
+}
+
+<<< Expand buffer capacity simulation >>>
+
+proc expand_capacity(required : int) -> int {
+
+    if buffer.size + required <= buffer.capacity {
+        return 0
+    }
+
+    set buffer.capacity = buffer.capacity * 2
+    set buffer.expansions = buffer.expansions + 1
+
+    <<< Expansion cost proportional to current size >>>
+    return buffer.size
+}
+
+<<< Insert operation simulation >>>
+
+proc insert_at(position : int, length : int) -> int {
+
+    let move_cost = move_gap_to(position)
+
+    let expand_cost = expand_capacity(length)
+
+    set buffer.size = buffer.size + length
+    set buffer.version = buffer.version + 1
+
+    return move_cost + expand_cost + length
+}
+
+<<< Single insert benchmark >>>
+
+proc bench_single_insert(position : int, length : int) -> InsertMetrics {
+
+    let cost = insert_at(position, length)
+
+    return InsertMetrics {
+        inserts: 1,
+        chars_inserted: length,
+        total_cost_units: cost,
+        max_single_insert_cost: cost
+    }
+}
+
+<<< Sequential insert benchmark >>>
+
+proc bench_sequential_inserts(
+    iterations : int,
+    insert_size : int
+) -> InsertMetrics {
+
+    let i = 0
+    let total_cost = 0
+    let max_cost = 0
+    let total_inserted = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        let cost = insert_at(buffer.gap_position, insert_size)
+
+        set total_cost = total_cost + cost
+        set total_inserted = total_inserted + insert_size
+
+        if cost > max_cost {
+            set max_cost = cost
+        }
+
+        set i = i + 1
+    }
+
+    return InsertMetrics {
+        inserts: iterations,
+        chars_inserted: total_inserted,
+        total_cost_units: total_cost,
+        max_single_insert_cost: max_cost
+    }
+}
+
+<<< Random insert benchmark >>>
+
+proc bench_random_inserts(
+    iterations : int,
+    insert_size : int
+) -> InsertMetrics {
+
+    let i = 0
+    let total_cost = 0
+    let max_cost = 0
+    let total_inserted = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        let position = (i * 3571) % buffer.size
+
+        let cost = insert_at(position, insert_size)
+
+        set total_cost = total_cost + cost
+        set total_inserted = total_inserted + insert_size
+
+        if cost > max_cost {
+            set max_cost = cost
+        }
+
+        set i = i + 1
+    }
+
+    return InsertMetrics {
+        inserts: iterations,
+        chars_inserted: total_inserted,
+        total_cost_units: total_cost,
+        max_single_insert_cost: max_cost
+    }
+}
+
+<<< Worst-case insert at start >>>
+
+proc stress_worst_case(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        insert_at(0, 1)
+
+        set i = i + 1
+    }
+}
+
+<<< Massive expansion scenario >>>
+
+proc stress_massive_expansion(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        insert_at(buffer.size, 50000)
+
+        set i = i + 1
+    }
+}
+
+<<< Reset buffer state >>>
+
+proc reset_buffer() {
+
+    set buffer.size = 1000000
+    set buffer.capacity = 1200000
+    set buffer.gap_position = 500000
+    set buffer.version = 1
+    set buffer.expansions = 0
+}
+
+<<< Expansion counter accessor >>>
+
+proc total_expansions() -> int {
+    return buffer.expansions
+}
+
+<<< Full buffer insert benchmark suite >>>
+
+proc run_buffer_insert_bench_ultra() {
+
+    reset_buffer()
+
+    bench_single_insert(1000, 10)
+    bench_sequential_inserts(1000, 5)
+    bench_random_inserts(1000, 3)
+
+    stress_worst_case(5000)
+    stress_massive_expansion(100)
+}

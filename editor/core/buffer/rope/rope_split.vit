@@ -1,1 +1,281 @@
-#  rope split logic
+space platon.editor.core.buffer.rope.rope_split
+
+pull platon.editor.core.buffer.rope.rope_node as node
+pull platon.editor.core.buffer.rope.rope_merge as merge
+pull platon.editor.core.buffer.rope.rope_balance as balance
+
+<<< Rope Split ULTRA MAX+++ >>>
+<<< Structural split by global offset with rebalancing support >>>
+
+
+form SplitStats {
+    splits : int
+    leaf_splits : int
+    rebalances : int
+    version : int
+}
+
+form RopeSplitEngine {
+    stats : SplitStats
+}
+
+<<< Create engine >>>
+
+proc new() -> RopeSplitEngine {
+
+    return RopeSplitEngine {
+        stats: SplitStats {
+            splits: 0,
+            leaf_splits: 0,
+            rebalances: 0,
+            version: 1
+        }
+    }
+}
+
+<<< Height helper >>>
+
+proc height(n : *node.RopeNode) -> int {
+
+    if n == null {
+        return 0
+    }
+
+    return n.height
+}
+
+<<< Split leaf node >>>
+
+proc split_leaf(
+    rse : RopeSplitEngine,
+    n : *node.RopeNode,
+    offset : int
+) -> [*node.RopeNode] {
+
+    if n == null {
+        return [null, null]
+    }
+
+    if offset <= 0 {
+        return [null, n]
+    }
+
+    if offset >= n.text.length {
+        return [n, null]
+    }
+
+    let left_text =
+        n.text.substring(0, offset)
+
+    let right_text =
+        n.text.substring(offset, n.text.length)
+
+    let rne = node.new()
+
+    let left_node =
+        node.leaf(rne, left_text)
+
+    let right_node =
+        node.leaf(rne, right_text)
+
+    set rse.stats.leaf_splits =
+        rse.stats.leaf_splits + 1
+
+    set rse.stats.version =
+        rse.stats.version + 1
+
+    return [left_node, right_node]
+}
+
+<<< Recursive structural split >>>
+
+proc split(
+    rse : RopeSplitEngine,
+    root : *node.RopeNode,
+    offset : int
+) -> [*node.RopeNode] {
+
+    if root == null {
+        return [null, null]
+    }
+
+    if node.is_leaf(root) {
+
+        return split_leaf(rse, root, offset)
+    }
+
+    if offset < root.weight {
+
+        let left_parts =
+            split(rse, root.left, offset)
+
+        let right_sub =
+            root.right
+
+        let rme = merge.new(3)
+
+        let new_right =
+            merge.merge_full(
+                rme,
+                left_parts[1],
+                right_sub
+            )
+
+        set rse.stats.splits =
+            rse.stats.splits + 1
+
+        return [left_parts[0], new_right]
+
+    } else {
+
+        let right_parts =
+            split(
+                rse,
+                root.right,
+                offset - root.weight
+            )
+
+        let left_sub =
+            root.left
+
+        let rme = merge.new(3)
+
+        let new_left =
+            merge.merge_full(
+                rme,
+                left_sub,
+                right_parts[0]
+            )
+
+        set rse.stats.splits =
+            rse.stats.splits + 1
+
+        return [new_left, right_parts[1]]
+    }
+}
+
+<<< Split with optional rebalance >>>
+
+proc split_rebalanced(
+    rse : RopeSplitEngine,
+    root : *node.RopeNode,
+    offset : int
+) -> [*node.RopeNode] {
+
+    let parts =
+        split(rse, root, offset)
+
+    let bal = balance.new()
+
+    if parts[0] != null {
+        set parts[0] =
+            balance.rebalance(bal, parts[0])
+
+        set rse.stats.rebalances =
+            rse.stats.rebalances + 1
+    }
+
+    if parts[1] != null {
+        set parts[1] =
+            balance.rebalance(bal, parts[1])
+
+        set rse.stats.rebalances =
+            rse.stats.rebalances + 1
+    }
+
+    set rse.stats.version =
+        rse.stats.version + 1
+
+    return parts
+}
+
+<<< Split at multiple offsets (batch mode) >>>
+
+proc split_multiple(
+    rse : RopeSplitEngine,
+    root : *node.RopeNode,
+    offsets : [int]
+) -> [*node.RopeNode] {
+
+    let current = root
+    let results : [*node.RopeNode] = []
+
+    let i = 0
+
+    loop {
+
+        if i >= offsets.length {
+            break
+        }
+
+        let parts =
+            split_rebalanced(
+                rse,
+                current,
+                offsets[i]
+            )
+
+        set results =
+            results + [parts[0]]
+
+        set current = parts[1]
+
+        set i = i + 1
+    }
+
+    set results =
+        results + [current]
+
+    return results
+}
+
+<<< Stress split workload >>>
+
+proc stress_split(
+    rse : RopeSplitEngine,
+    root : *node.RopeNode,
+    iterations : int
+) -> *node.RopeNode {
+
+    let i = 0
+    let current = root
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        let parts =
+            split_rebalanced(
+                rse,
+                current,
+                i % 10
+            )
+
+        current =
+            merge.merge_full(
+                merge.new(3),
+                parts[0],
+                parts[1]
+            )
+
+        set i = i + 1
+    }
+
+    return current
+}
+
+<<< Full rope split suite >>>
+
+proc run_rope_split_ultra() {
+
+    let rse = new()
+
+    let rne = node.new()
+
+    let root =
+        node.leaf(rne, "UltraMassiveRope")
+
+    stress_split(rse, root, 2000)
+}

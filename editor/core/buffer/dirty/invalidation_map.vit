@@ -1,1 +1,269 @@
-#  invalidation tracking
+space platon.editor.core.buffer.dirty.invalidation_map
+
+<<< Invalidation Map Engine ULTRA MAX+++ >>>
+<<< Line-aware invalidation, viewport clipping, incremental redraw core >>>
+
+form LineRange {
+    start_line : int
+    end_line : int
+}
+
+form Viewport {
+    top : int
+    bottom : int
+}
+
+form InvalidationState {
+    line_ranges : [LineRange]
+    total_invalid_lines : int
+    version : int
+}
+
+let state = InvalidationState {
+    line_ranges: [],
+    total_invalid_lines: 0,
+    version: 1
+}
+
+<<< Normalize line range >>>
+
+proc normalize(start_line : int, end_line : int) -> LineRange {
+
+    if start_line <= end_line {
+        return LineRange { start_line: start_line, end_line: end_line }
+    }
+
+    return LineRange { start_line: end_line, end_line: start_line }
+}
+
+<<< Merge overlapping or adjacent line ranges >>>
+
+proc merge_if_needed(a : LineRange, b : LineRange) -> LineRange {
+
+    if b.start_line <= a.end_line + 1 {
+
+        let new_end = a.end_line
+
+        if b.end_line > new_end {
+            set new_end = b.end_line
+        }
+
+        return LineRange {
+            start_line: a.start_line,
+            end_line: new_end
+        }
+    }
+
+    return a
+}
+
+<<< Add invalidation range with merging >>>
+
+proc invalidate_lines(start_line : int, end_line : int) {
+
+    let new_range = normalize(start_line, end_line)
+
+    let merged : [LineRange] = []
+
+    let i = 0
+
+    loop {
+
+        if i >= state.line_ranges.length {
+            break
+        }
+
+        let r = state.line_ranges[i]
+
+        if r.end_line < new_range.start_line - 1 {
+
+            set merged = merged + [r]
+
+        } else if r.start_line > new_range.end_line + 1 {
+
+            set merged = merged + [new_range]
+            set new_range = r
+
+        } else {
+
+            set new_range = merge_if_needed(r, new_range)
+        }
+
+        set i = i + 1
+    }
+
+    set merged = merged + [new_range]
+
+    set state.line_ranges = merged
+
+    set state.total_invalid_lines =
+        state.total_invalid_lines +
+        (new_range.end_line - new_range.start_line + 1)
+
+    set state.version = state.version + 1
+}
+
+<<< Clear invalidation map >>>
+
+proc clear_invalidation() {
+
+    set state.line_ranges = []
+    set state.total_invalid_lines = 0
+    set state.version = state.version + 1
+}
+
+<<< Check if a line is invalid >>>
+
+proc is_line_invalid(line : int) -> bool {
+
+    let i = 0
+
+    loop {
+
+        if i >= state.line_ranges.length {
+            break
+        }
+
+        let r = state.line_ranges[i]
+
+        if line >= r.start_line and line <= r.end_line {
+            return true
+        }
+
+        set i = i + 1
+    }
+
+    return false
+}
+
+<<< Get invalid ranges clipped to viewport >>>
+
+proc clipped_to_viewport(v : Viewport) -> [LineRange] {
+
+    let result : [LineRange] = []
+
+    let i = 0
+
+    loop {
+
+        if i >= state.line_ranges.length {
+            break
+        }
+
+        let r = state.line_ranges[i]
+
+        if r.end_line < v.top or r.start_line > v.bottom {
+
+            <<< Outside viewport >>>
+
+        } else {
+
+            let clipped_start = r.start_line
+            let clipped_end = r.end_line
+
+            if clipped_start < v.top {
+                set clipped_start = v.top
+            }
+
+            if clipped_end > v.bottom {
+                set clipped_end = v.bottom
+            }
+
+            set result =
+                result +
+                [LineRange {
+                    start_line: clipped_start,
+                    end_line: clipped_end
+                }]
+        }
+
+        set i = i + 1
+    }
+
+    return result
+}
+
+<<< Shift invalidation after insert/delete >>>
+
+proc shift_after_edit(at_line : int, delta : int) {
+
+    let i = 0
+
+    loop {
+
+        if i >= state.line_ranges.length {
+            break
+        }
+
+        let r = state.line_ranges[i]
+
+        if r.start_line >= at_line {
+
+            set r.start_line = r.start_line + delta
+            set r.end_line = r.end_line + delta
+        }
+
+        set state.line_ranges[i] = r
+
+        set i = i + 1
+    }
+
+    set state.version = state.version + 1
+}
+
+<<< Stress small scattered invalidations >>>
+
+proc stress_scattered(iterations : int) {
+
+    let i = 0
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        invalidate_lines(i * 5, i * 5 + 1)
+
+        set i = i + 1
+    }
+}
+
+<<< Stress full-screen redraw blocks >>>
+
+proc stress_full_screen(iterations : int, lines_per_screen : int) {
+
+    let i = 0
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        invalidate_lines(0, lines_per_screen)
+
+        set i = i + 1
+    }
+}
+
+<<< Reset invalidation state >>>
+
+proc reset_invalidation() {
+
+    set state.line_ranges = []
+    set state.total_invalid_lines = 0
+    set state.version = 1
+}
+
+<<< Full invalidation suite >>>
+
+proc run_invalidation_map_ultra() {
+
+    reset_invalidation()
+
+    stress_scattered(1000)
+    stress_full_screen(100, 80)
+
+    clear_invalidation()
+}

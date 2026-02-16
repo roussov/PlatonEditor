@@ -1,3 +1,199 @@
-space platon.editor.core.buffer.dirty
+space platon.editor.core.buffer.dirty.dirty_range
 
-proc mark_dirty(start : int, end : int) {}
+<<< Dirty Range Engine ULTRA MAX+++ >>>
+<<< Tracks invalidated regions for redraw, incremental parsing, and minimap refresh >>>
+
+form Range {
+    start : int
+    end : int
+}
+
+form DirtyState {
+    ranges : [Range]
+    total_dirty_bytes : int
+    version : int
+}
+
+let state = DirtyState {
+    ranges: [],
+    total_dirty_bytes: 0,
+    version: 1
+}
+
+<<< Normalize range >>>
+
+proc normalize(start : int, end : int) -> Range {
+
+    if start <= end {
+        return Range { start: start, end: end }
+    }
+
+    return Range { start: end, end: start }
+}
+
+<<< Merge two ranges if overlapping or adjacent >>>
+
+proc merge_if_needed(a : Range, b : Range) -> Range {
+
+    if b.start <= a.end + 1 {
+
+        let new_end = a.end
+
+        if b.end > new_end {
+            set new_end = b.end
+        }
+
+        return Range {
+            start: a.start,
+            end: new_end
+        }
+    }
+
+    return a
+}
+
+<<< Add dirty range with merge >>>
+
+proc add_dirty(start : int, end : int) {
+
+    let new_range = normalize(start, end)
+
+    let merged : [Range] = []
+
+    let i = 0
+
+    loop {
+
+        if i >= state.ranges.length {
+            break
+        }
+
+        let r = state.ranges[i]
+
+        if r.end < new_range.start - 1 {
+
+            set merged = merged + [r]
+
+        } else if r.start > new_range.end + 1 {
+
+            set merged = merged + [new_range]
+            set new_range = r
+
+        } else {
+
+            set new_range = merge_if_needed(r, new_range)
+        }
+
+        set i = i + 1
+    }
+
+    set merged = merged + [new_range]
+
+    set state.ranges = merged
+
+    set state.total_dirty_bytes =
+        state.total_dirty_bytes + (new_range.end - new_range.start)
+
+    set state.version = state.version + 1
+}
+
+<<< Clear all dirty ranges >>>
+
+proc clear_dirty() {
+
+    set state.ranges = []
+    set state.total_dirty_bytes = 0
+    set state.version = state.version + 1
+}
+
+<<< Query if position is dirty >>>
+
+proc is_dirty(pos : int) -> bool {
+
+    let i = 0
+
+    loop {
+        if i >= state.ranges.length {
+            break
+        }
+
+        let r = state.ranges[i]
+
+        if pos >= r.start and pos <= r.end {
+            return true
+        }
+
+        set i = i + 1
+    }
+
+    return false
+}
+
+<<< Get total dirty bytes >>>
+
+proc dirty_bytes() -> int {
+    return state.total_dirty_bytes
+}
+
+<<< Get dirty range count >>>
+
+proc dirty_range_count() -> int {
+    return state.ranges.length
+}
+
+<<< Stress many small dirty regions >>>
+
+proc stress_small_updates(iterations : int) {
+
+    let i = 0
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        add_dirty(i * 3, i * 3 + 2)
+
+        set i = i + 1
+    }
+}
+
+<<< Stress large invalidation blocks >>>
+
+proc stress_large_blocks(iterations : int, block_size : int) {
+
+    let i = 0
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        add_dirty(i * block_size, i * block_size + block_size)
+
+        set i = i + 1
+    }
+}
+
+<<< Reset dirty state >>>
+
+proc reset_dirty_state() {
+
+    set state.ranges = []
+    set state.total_dirty_bytes = 0
+    set state.version = 1
+}
+
+<<< Full dirty engine suite >>>
+
+proc run_dirty_range_ultra() {
+
+    reset_dirty_state()
+
+    stress_small_updates(1000)
+    stress_large_blocks(200, 4096)
+
+    clear_dirty()
+}

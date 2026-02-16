@@ -1,1 +1,226 @@
-#  huge file benchmark
+space platon.editor.core.buffer.bench.huge_file_bench
+
+<<< Huge File Buffer Benchmark ULTRA MAX+++ >>>
+<<< Simulates 100MB+ files, insert/delete mix, cache pressure, locality modeling >>>
+
+form HugeMetrics {
+    operations : int
+    bytes_processed : int
+    total_cost_units : int
+    max_operation_cost : int
+    expansions : int
+}
+
+form HugeBufferState {
+    size : int
+    capacity : int
+    gap_position : int
+    version : int
+    expansions : int
+}
+
+const INITIAL_SIZE : int = 100000000
+const INITIAL_CAPACITY : int = 120000000
+
+let buffer = HugeBufferState {
+    size: INITIAL_SIZE,
+    capacity: INITIAL_CAPACITY,
+    gap_position: INITIAL_SIZE / 2,
+    version: 1,
+    expansions: 0
+}
+
+<<< Simulate cache pressure cost >>>
+
+proc cache_penalty(distance : int) -> int {
+
+    if distance > 1000000 {
+        return distance / 10
+    }
+
+    return 0
+}
+
+<<< Move gap cost simulation with locality modeling >>>
+
+proc move_gap(position : int) -> int {
+
+    let distance = 0
+
+    if position > buffer.gap_position {
+        set distance = position - buffer.gap_position
+    } else {
+        set distance = buffer.gap_position - position
+    }
+
+    set buffer.gap_position = position
+
+    return distance + cache_penalty(distance)
+}
+
+<<< Expand capacity for huge file >>>
+
+proc expand(required : int) -> int {
+
+    if buffer.size + required <= buffer.capacity {
+        return 0
+    }
+
+    set buffer.capacity = buffer.capacity * 2
+    set buffer.expansions = buffer.expansions + 1
+
+    <<< Expansion cost proportional to buffer size >>>
+    return buffer.size
+}
+
+<<< Insert simulation >>>
+
+proc insert_at(position : int, length : int) -> int {
+
+    let move_cost = move_gap(position)
+    let expand_cost = expand(length)
+
+    set buffer.size = buffer.size + length
+    set buffer.version = buffer.version + 1
+
+    return move_cost + expand_cost + length
+}
+
+<<< Delete simulation >>>
+
+proc delete_at(position : int, length : int) -> int {
+
+    let move_cost = move_gap(position)
+
+    let actual = length
+
+    if position + length > buffer.size {
+        set actual = buffer.size - position
+    }
+
+    set buffer.size = buffer.size - actual
+    set buffer.version = buffer.version + 1
+
+    return move_cost + actual
+}
+
+<<< Mixed workload benchmark >>>
+
+proc bench_mixed_workload(
+    iterations : int,
+    chunk_size : int
+) -> HugeMetrics {
+
+    let i = 0
+    let total_cost = 0
+    let max_cost = 0
+    let total_bytes = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        let position = (i * 104729) % buffer.size
+
+        let cost = 0
+
+        if i % 2 == 0 {
+            set cost = insert_at(position, chunk_size)
+        } else {
+            set cost = delete_at(position, chunk_size)
+        }
+
+        set total_cost = total_cost + cost
+        set total_bytes = total_bytes + chunk_size
+
+        if cost > max_cost {
+            set max_cost = cost
+        }
+
+        set i = i + 1
+    }
+
+    return HugeMetrics {
+        operations: iterations,
+        bytes_processed: total_bytes,
+        total_cost_units: total_cost,
+        max_operation_cost: max_cost,
+        expansions: buffer.expansions
+    }
+}
+
+<<< Worst-case full file scan simulation >>>
+
+proc stress_full_scan(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        move_gap(buffer.size)
+
+        set i = i + 1
+    }
+}
+
+<<< Massive insert burst >>>
+
+proc stress_insert_burst(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        insert_at(buffer.size, 100000)
+
+        set i = i + 1
+    }
+}
+
+<<< Massive delete burst >>>
+
+proc stress_delete_burst(iterations : int) {
+
+    let i = 0
+
+    loop {
+        if i >= iterations {
+            break
+        }
+
+        delete_at(buffer.size / 2, 100000)
+
+        set i = i + 1
+    }
+}
+
+<<< Reset huge buffer >>>
+
+proc reset_huge_buffer() {
+
+    set buffer.size = INITIAL_SIZE
+    set buffer.capacity = INITIAL_CAPACITY
+    set buffer.gap_position = INITIAL_SIZE / 2
+    set buffer.version = 1
+    set buffer.expansions = 0
+}
+
+<<< Full huge file benchmark suite >>>
+
+proc run_huge_file_bench_ultra() {
+
+    reset_huge_buffer()
+
+    bench_mixed_workload(1000, 4096)
+
+    stress_full_scan(200)
+    stress_insert_burst(50)
+    stress_delete_burst(50)
+}

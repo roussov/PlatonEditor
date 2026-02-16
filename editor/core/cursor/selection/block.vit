@@ -1,1 +1,258 @@
-#  block selection
+space platon.editor.core.cursor.selection.block
+
+pull platon.editor.core.buffer.buffer as buffer
+pull platon.editor.core.buffer.cursor as cursor
+pull platon.editor.core.cursor.navigation.line_navigation as line_nav
+
+<<< Block Selection ULTRA MAX CORE >>>
+<<< Rectangular / column-based selection engine >>>
+
+
+<<< ===================================================== >>
+<<< Models >>
+<<< ===================================================== >>>
+
+form BlockSelection {
+    start_offset : int
+    end_offset   : int
+    start_line   : int
+    end_line     : int
+    start_col    : int
+    end_col      : int
+}
+
+
+<<< ===================================================== >>
+<<< Helpers >>
+<<< ===================================================== >>>
+
+proc normalize_block(bs : BlockSelection) -> BlockSelection {
+
+    let sl = bs.start_line
+    let el = bs.end_line
+    let sc = bs.start_col
+    let ec = bs.end_col
+
+    if sl > el {
+        let tmp = sl
+        set sl = el
+        set el = tmp
+    }
+
+    if sc > ec {
+        let tmp2 = sc
+        set sc = ec
+        set ec = tmp2
+    }
+
+    return BlockSelection {
+        start_offset: bs.start_offset,
+        end_offset: bs.end_offset,
+        start_line: sl,
+        end_line: el,
+        start_col: sc,
+        end_col: ec
+    }
+}
+
+
+proc offset_of_line(text : string, target_line : int) -> int {
+
+    let i = 0
+    let line = 0
+
+    if target_line <= 0 {
+        return 0
+    }
+
+    loop {
+
+        if i >= text.length {
+            break
+        }
+
+        if text[i] == 10 {
+            set line = line + 1
+
+            if line == target_line {
+                return i + 1
+            }
+        }
+
+        set i = i + 1
+    }
+
+    return text.length
+}
+
+
+<<< ===================================================== >>
+<<< Create Block From Cursors >>
+<<< ===================================================== >>>
+
+proc create(
+    b : buffer.Buffer,
+    anchor : cursor.Cursor,
+    active : cursor.Cursor
+) -> BlockSelection {
+
+    let text =
+        buffer.as_string(b)
+
+    let sl =
+        line_nav.line_number(text, anchor.pos.offset)
+
+    let el =
+        line_nav.line_number(text, active.pos.offset)
+
+    let sc =
+        line_nav.compute_column(text, anchor.pos.offset)
+
+    let ec =
+        line_nav.compute_column(text, active.pos.offset)
+
+    return normalize_block(
+        BlockSelection {
+            start_offset: anchor.pos.offset,
+            end_offset: active.pos.offset,
+            start_line: sl,
+            end_line: el,
+            start_col: sc,
+            end_col: ec
+        }
+    )
+}
+
+
+<<< ===================================================== >>
+<<< Extract Block Text >>
+<<< ===================================================== >>>
+
+proc extract(
+    b : buffer.Buffer,
+    bs : BlockSelection
+) -> [string] {
+
+    let text =
+        buffer.as_string(b)
+
+    let lines = []
+    let line = bs.start_line
+
+    loop {
+
+        if line > bs.end_line {
+            break
+        }
+
+        let line_start =
+            offset_of_line(text, line)
+
+        let start =
+            line_start + bs.start_col
+
+        let end =
+            line_start + bs.end_col
+
+        if start > text.length {
+            set start = text.length
+        }
+
+        if end > text.length {
+            set end = text.length
+        }
+
+        set lines =
+            lines + [ text[start:end] ]
+
+        set line = line + 1
+    }
+
+    return lines
+}
+
+
+<<< ===================================================== >>
+<<< Replace Block Text >>
+<<< ===================================================== >>>
+
+proc replace(
+    b : buffer.Buffer,
+    bs : BlockSelection,
+    replacement : string
+) -> buffer.Buffer {
+
+    let text =
+        buffer.as_string(b)
+
+    let line = bs.end_line
+
+    <<< Apply bottom to top to preserve offsets >>>
+
+    loop {
+
+        if line < bs.start_line {
+            break
+        }
+
+        let line_start =
+            offset_of_line(text, line)
+
+        let start =
+            line_start + bs.start_col
+
+        let end =
+            line_start + bs.end_col
+
+        if start < text.length {
+
+            set b =
+                buffer.delete(
+                    b,
+                    start,
+                    end - start
+                )
+
+            set b =
+                buffer.insert(
+                    b,
+                    start,
+                    replacement
+                )
+        }
+
+        set line = line - 1
+    }
+
+    return b
+}
+
+
+<<< ===================================================== >>
+<<< Expand Block Vertically >>
+<<< ===================================================== >>>
+
+proc expand_down(
+    bs : BlockSelection,
+    total_lines : int
+) -> BlockSelection {
+
+    if bs.end_line + 1 >= total_lines {
+        return bs
+    }
+
+    set bs.end_line = bs.end_line + 1
+    return bs
+}
+
+proc expand_up(
+    bs : BlockSelection
+) -> BlockSelection {
+
+    if bs.start_line <= 0 {
+        return bs
+    }
+
+    set bs.start_line = bs.start_line - 1
+    return bs
+}

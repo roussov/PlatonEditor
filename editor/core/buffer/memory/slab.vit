@@ -1,1 +1,394 @@
-#  slab allocator
+space platon.editor.core.buffer.memory.slab
+
+<<< Slab Allocator ULTRA MAX+++ >>>
+<<< Size-class slabs, free lists, partial/full tracking, reclaim simulation >>>
+
+form SlabSlot {
+    used : bool
+}
+
+form Slab {
+    object_size : int
+    capacity : int
+    used_count : int
+    slots : [SlabSlot]
+}
+
+form SlabClass {
+    size : int
+    slabs : [Slab]
+}
+
+form SlabStats {
+    allocations : int
+    deallocations : int
+    slab_creations : int
+    slab_reclaims : int
+    version : int
+}
+
+form SlabAllocator {
+    classes : [SlabClass]
+    default_capacity : int
+    stats : SlabStats
+}
+
+const DEFAULT_SLAB_CAPACITY : int = 256
+
+<<< Create new slab allocator >>>
+
+proc new(default_capacity : int) -> SlabAllocator {
+
+    let cap = default_capacity
+
+    if cap <= 0 {
+        set cap = DEFAULT_SLAB_CAPACITY
+    }
+
+    return SlabAllocator {
+        classes: [],
+        default_capacity: cap,
+        stats: SlabStats {
+            allocations: 0,
+            deallocations: 0,
+            slab_creations: 0,
+            slab_reclaims: 0,
+            version: 1
+        }
+    }
+}
+
+<<< Find or create size class >>>
+
+proc ensure_class(
+    sa : SlabAllocator,
+    size : int
+) -> SlabAllocator {
+
+    let i = 0
+
+    loop {
+
+        if i >= sa.classes.length {
+            break
+        }
+
+        if sa.classes[i].size == size {
+            return sa
+        }
+
+        set i = i + 1
+    }
+
+    <<< Create new class >>>
+    set sa.classes =
+        sa.classes +
+        [SlabClass {
+            size: size,
+            slabs: []
+        }]
+
+    return sa
+}
+
+<<< Create slab for class >>>
+
+proc create_slab(
+    sc : SlabClass,
+    capacity : int
+) -> SlabClass {
+
+    let slots : [SlabSlot] = []
+
+    let i = 0
+
+    loop {
+
+        if i >= capacity {
+            break
+        }
+
+        set slots = slots + [SlabSlot { used: false }]
+        set i = i + 1
+    }
+
+    set sc.slabs =
+        sc.slabs +
+        [Slab {
+            object_size: sc.size,
+            capacity: capacity,
+            used_count: 0,
+            slots: slots
+        }]
+
+    return sc
+}
+
+<<< Allocate object >>>
+
+proc alloc(
+    sa : SlabAllocator,
+    size : int
+) -> SlabAllocator {
+
+    set sa = ensure_class(sa, size)
+
+    let c = 0
+
+    loop {
+
+        if c >= sa.classes.length {
+            break
+        }
+
+        if sa.classes[c].size == size {
+
+            let sc = sa.classes[c]
+
+            let s = 0
+
+            loop {
+
+                if s >= sc.slabs.length {
+                    break
+                }
+
+                let slab = sc.slabs[s]
+
+                if slab.used_count < slab.capacity {
+
+                    let i = 0
+
+                    loop {
+
+                        if i >= slab.capacity {
+                            break
+                        }
+
+                        let slot = slab.slots[i]
+
+                        if not slot.used {
+
+                            set slot.used = true
+                            set slab.slots[i] = slot
+                            set slab.used_count =
+                                slab.used_count + 1
+
+                            set sc.slabs[s] = slab
+                            set sa.classes[c] = sc
+
+                            set sa.stats.allocations =
+                                sa.stats.allocations + 1
+
+                            set sa.stats.version =
+                                sa.stats.version + 1
+
+                            return sa
+                        }
+
+                        set i = i + 1
+                    }
+                }
+
+                set s = s + 1
+            }
+
+            <<< No free slab, create one >>>
+            set sc =
+                create_slab(sc, sa.default_capacity)
+
+            set sa.classes[c] = sc
+            set sa.stats.slab_creations =
+                sa.stats.slab_creations + 1
+
+            set sa.stats.version =
+                sa.stats.version + 1
+
+            return alloc(sa, size)
+        }
+
+        set c = c + 1
+    }
+
+    return sa
+}
+
+<<< Free first matching object (simulation) >>>
+
+proc free_one(
+    sa : SlabAllocator,
+    size : int
+) -> SlabAllocator {
+
+    let c = 0
+
+    loop {
+
+        if c >= sa.classes.length {
+            break
+        }
+
+        if sa.classes[c].size == size {
+
+            let sc = sa.classes[c]
+
+            let s = 0
+
+            loop {
+
+                if s >= sc.slabs.length {
+                    break
+                }
+
+                let slab = sc.slabs[s]
+
+                if slab.used_count > 0 {
+
+                    let i = 0
+
+                    loop {
+
+                        if i >= slab.capacity {
+                            break
+                        }
+
+                        let slot = slab.slots[i]
+
+                        if slot.used {
+
+                            set slot.used = false
+                            set slab.slots[i] = slot
+                            set slab.used_count =
+                                slab.used_count - 1
+
+                            set sc.slabs[s] = slab
+                            set sa.classes[c] = sc
+
+                            set sa.stats.deallocations =
+                                sa.stats.deallocations + 1
+
+                            set sa.stats.version =
+                                sa.stats.version + 1
+
+                            return sa
+                        }
+
+                        set i = i + 1
+                    }
+                }
+
+                set s = s + 1
+            }
+        }
+
+        set c = c + 1
+    }
+
+    return sa
+}
+
+<<< Reclaim empty slabs >>>
+
+proc reclaim_empty(
+    sa : SlabAllocator
+) -> SlabAllocator {
+
+    let c = 0
+
+    loop {
+
+        if c >= sa.classes.length {
+            break
+        }
+
+        let sc = sa.classes[c]
+
+        let new_slabs : [Slab] = []
+
+        let s = 0
+
+        loop {
+
+            if s >= sc.slabs.length {
+                break
+            }
+
+            let slab = sc.slabs[s]
+
+            if slab.used_count > 0 {
+                set new_slabs = new_slabs + [slab]
+            } else {
+                set sa.stats.slab_reclaims =
+                    sa.stats.slab_reclaims + 1
+            }
+
+            set s = s + 1
+        }
+
+        set sc.slabs = new_slabs
+        set sa.classes[c] = sc
+
+        set c = c + 1
+    }
+
+    set sa.stats.version =
+        sa.stats.version + 1
+
+    return sa
+}
+
+<<< Stats accessors >>>
+
+proc total_allocations(sa : SlabAllocator) -> int {
+    return sa.stats.allocations
+}
+
+proc total_deallocations(sa : SlabAllocator) -> int {
+    return sa.stats.deallocations
+}
+
+proc slab_creation_count(sa : SlabAllocator) -> int {
+    return sa.stats.slab_creations
+}
+
+proc slab_reclaim_count(sa : SlabAllocator) -> int {
+    return sa.stats.slab_reclaims
+}
+
+<<< Stress mixed allocation sizes >>>
+
+proc stress_slab(
+    sa : SlabAllocator,
+    iterations : int
+) -> SlabAllocator {
+
+    let i = 0
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        let size = (i % 4 + 1) * 32
+
+        set sa = alloc(sa, size)
+
+        if i % 3 == 0 {
+            set sa = free_one(sa, size)
+        }
+
+        set i = i + 1
+    }
+
+    return reclaim_empty(sa)
+}
+
+<<< Full slab allocator suite >>>
+
+proc run_slab_ultra() {
+
+    let sa = new(DEFAULT_SLAB_CAPACITY)
+
+    stress_slab(sa, 10000)
+}

@@ -1,6 +1,324 @@
-space platon.editor.core.buffer
+space platon.editor.core.buffer.cursor
+
+pull platon.editor.core.buffer.buffer as buffer
+
+<<< Cursor Engine ULTRA MAX CORE >>>
+<<< Multi-cursor + selection + transaction aware movement >>>
+
+
+<<< ===================================================== >>
+<<< Models >>
+<<< ===================================================== >>>
+
+form Position {
+    offset : int
+}
+
+form Selection {
+    start : int
+    end   : int
+}
 
 form Cursor {
-    line : int
-    column : int
+    pos        : Position
+    selection  : Selection
+    preferred_column : int
+}
+
+form CursorSet {
+    cursors : [Cursor]
+    primary : int
+}
+
+<<< ===================================================== >>
+<<< Initialization >>
+<<< ===================================================== >>>
+
+proc new_cursor(offset : int) -> Cursor {
+
+    return Cursor {
+        pos: Position { offset: offset },
+        selection: Selection { start: offset, end: offset },
+        preferred_column: 0
+    }
+}
+
+proc new_set() -> CursorSet {
+
+    return CursorSet {
+        cursors: [ new_cursor(0) ],
+        primary: 0
+    }
+}
+
+<<< ===================================================== >>
+<<< Utilities >>
+<<< ===================================================== >>>
+
+proc clamp_offset(b : buffer.Buffer, off : int) -> int {
+
+    let len = buffer.length(b)
+
+    if off < 0 {
+        return 0
+    }
+
+    if off > len {
+        return len
+    }
+
+    return off
+}
+
+proc collapse_selection(c : Cursor) -> Cursor {
+
+    set c.selection.start = c.pos.offset
+    set c.selection.end   = c.pos.offset
+
+    return c
+}
+
+proc has_selection(c : Cursor) -> bool {
+    return c.selection.start != c.selection.end
+}
+
+<<< ===================================================== >>
+<<< Movement >>
+<<< ===================================================== >>>
+
+proc move_left(b : buffer.Buffer, c : Cursor) -> Cursor {
+
+    let new_off =
+        clamp_offset(b, c.pos.offset - 1)
+
+    set c.pos.offset = new_off
+
+    set c = collapse_selection(c)
+
+    return c
+}
+
+proc move_right(b : buffer.Buffer, c : Cursor) -> Cursor {
+
+    let new_off =
+        clamp_offset(b, c.pos.offset + 1)
+
+    set c.pos.offset = new_off
+
+    set c = collapse_selection(c)
+
+    return c
+}
+
+proc move_to(b : buffer.Buffer, c : Cursor, off : int) -> Cursor {
+
+    set c.pos.offset =
+        clamp_offset(b, off)
+
+    set c = collapse_selection(c)
+
+    return c
+}
+
+<<< ===================================================== >>
+<<< Selection Operations >>
+<<< ===================================================== >>>
+
+proc select_range(
+    b : buffer.Buffer,
+    c : Cursor,
+    start : int,
+    end : int
+) -> Cursor {
+
+    let s = clamp_offset(b, start)
+    let e = clamp_offset(b, end)
+
+    set c.selection.start = s
+    set c.selection.end   = e
+    set c.pos.offset      = e
+
+    return c
+}
+
+proc clear_selection(c : Cursor) -> Cursor {
+
+    set c.selection.start = c.pos.offset
+    set c.selection.end   = c.pos.offset
+
+    return c
+}
+
+<<< ===================================================== >>
+<<< Multi-Cursor Management >>
+<<< ===================================================== >>>
+
+proc add_cursor(
+    set : CursorSet,
+    offset : int
+) -> CursorSet {
+
+    let c = new_cursor(offset)
+
+    set set.cursors =
+        set.cursors + [c]
+
+    return set
+}
+
+proc remove_cursor(
+    set : CursorSet,
+    index : int
+) -> CursorSet {
+
+    if index < 0 or index >= set.cursors.length {
+        return set
+    }
+
+    set set.cursors =
+        set.cursors[0:index] +
+        set.cursors[index+1:set.cursors.length]
+
+    if set.primary >= set.cursors.length {
+        set set.primary = 0
+    }
+
+    return set
+}
+
+proc primary(set : CursorSet) -> Cursor {
+    return set.cursors[set.primary]
+}
+
+proc update_primary(
+    set : CursorSet,
+    cursor : Cursor
+) -> CursorSet {
+
+    set set.cursors[set.primary] = cursor
+
+    return set
+}
+
+<<< ===================================================== >>
+<<< Buffer Edit Synchronization >>
+<<< ===================================================== >>>
+
+proc adjust_after_insert(
+    c : Cursor,
+    pos : int,
+    len : int
+) -> Cursor {
+
+    if c.pos.offset >= pos {
+        set c.pos.offset = c.pos.offset + len
+    }
+
+    if c.selection.start >= pos {
+        set c.selection.start = c.selection.start + len
+    }
+
+    if c.selection.end >= pos {
+        set c.selection.end = c.selection.end + len
+    }
+
+    return c
+}
+
+proc adjust_after_delete(
+    c : Cursor,
+    pos : int,
+    len : int
+) -> Cursor {
+
+    let end_pos = pos + len
+
+    if c.pos.offset > pos {
+
+        if c.pos.offset < end_pos {
+            set c.pos.offset = pos
+        } else {
+            set c.pos.offset = c.pos.offset - len
+        }
+    }
+
+    if c.selection.start > pos {
+
+        if c.selection.start < end_pos {
+            set c.selection.start = pos
+        } else {
+            set c.selection.start =
+                c.selection.start - len
+        }
+    }
+
+    if c.selection.end > pos {
+
+        if c.selection.end < end_pos {
+            set c.selection.end = pos
+        } else {
+            set c.selection.end =
+                c.selection.end - len
+        }
+    }
+
+    return c
+}
+
+<<< ===================================================== >>
+<<< Batch Adjust For Multi Cursor >>
+<<< ===================================================== >>>
+
+proc adjust_set_after_insert(
+    set : CursorSet,
+    pos : int,
+    len : int
+) -> CursorSet {
+
+    let i = 0
+
+    loop {
+
+        if i >= set.cursors.length {
+            break
+        }
+
+        set set.cursors[i] =
+            adjust_after_insert(
+                set.cursors[i],
+                pos,
+                len
+            )
+
+        set i = i + 1
+    }
+
+    return set
+}
+
+proc adjust_set_after_delete(
+    set : CursorSet,
+    pos : int,
+    len : int
+) -> CursorSet {
+
+    let i = 0
+
+    loop {
+
+        if i >= set.cursors.length {
+            break
+        }
+
+        set set.cursors[i] =
+            adjust_after_delete(
+                set.cursors[i],
+                pos,
+                len
+            )
+
+        set i = i + 1
+    }
+
+    return set
 }

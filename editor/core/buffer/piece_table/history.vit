@@ -1,1 +1,315 @@
-#  undo/redo stack
+space platon.editor.core.buffer.piece_table.history
+
+<<< Piece Table History ULTRA MAX+++ >>>
+<<< Transactional undo/redo engine with snapshot isolation and version tracking >>>
+
+
+pick OperationKind {
+    case Insert
+    case Delete
+    case Replace
+}
+
+form Operation {
+    kind : OperationKind
+    offset : int
+    length : int
+    text : string
+    version : int
+}
+
+form Transaction {
+    id : int
+    ops : [Operation]
+    committed : bool
+    version : int
+}
+
+form HistoryStats {
+    total_ops : int
+    total_transactions : int
+    undo_count : int
+    redo_count : int
+    version : int
+}
+
+form PieceTableHistory {
+    undo_stack : [Transaction]
+    redo_stack : [Transaction]
+    current_tx : Transaction
+    next_tx_id : int
+    stats : HistoryStats
+}
+
+<<< Create new history engine >>>
+
+proc new() -> PieceTableHistory {
+
+    return PieceTableHistory {
+        undo_stack: [],
+        redo_stack: [],
+        current_tx: Transaction {
+            id: 0,
+            ops: [],
+            committed: false,
+            version: 1
+        },
+        next_tx_id: 1,
+        stats: HistoryStats {
+            total_ops: 0,
+            total_transactions: 0,
+            undo_count: 0,
+            redo_count: 0,
+            version: 1
+        }
+    }
+}
+
+<<< Begin transaction >>>
+
+proc begin(
+    h : PieceTableHistory
+) -> PieceTableHistory {
+
+    set h.current_tx = Transaction {
+        id: h.next_tx_id,
+        ops: [],
+        committed: false,
+        version: h.stats.version + 1
+    }
+
+    set h.next_tx_id = h.next_tx_id + 1
+
+    return h
+}
+
+<<< Record operation >>>
+
+proc record(
+    h : PieceTableHistory,
+    kind : OperationKind,
+    offset : int,
+    length : int,
+    text : string
+) -> PieceTableHistory {
+
+    let op = Operation {
+        kind: kind,
+        offset: offset,
+        length: length,
+        text: text,
+        version: h.stats.version + 1
+    }
+
+    set h.current_tx.ops =
+        h.current_tx.ops + [op]
+
+    set h.stats.total_ops =
+        h.stats.total_ops + 1
+
+    set h.stats.version =
+        h.stats.version + 1
+
+    return h
+}
+
+<<< Commit transaction to undo stack >>>
+
+proc commit(
+    h : PieceTableHistory
+) -> PieceTableHistory {
+
+    if h.current_tx.ops.length == 0 {
+        return h
+    }
+
+    set h.current_tx.committed = true
+
+    set h.undo_stack =
+        h.undo_stack + [h.current_tx]
+
+    set h.redo_stack = []
+
+    set h.stats.total_transactions =
+        h.stats.total_transactions + 1
+
+    set h.stats.version =
+        h.stats.version + 1
+
+    return h
+}
+
+<<< Undo last transaction >>>
+
+proc undo(
+    h : PieceTableHistory
+) -> PieceTableHistory {
+
+    if h.undo_stack.length == 0 {
+        return h
+    }
+
+    let last =
+        h.undo_stack[
+            h.undo_stack.length - 1
+        ]
+
+    let new_undo : [Transaction] = []
+
+    let i = 0
+
+    loop {
+
+        if i >= h.undo_stack.length - 1 {
+            break
+        }
+
+        set new_undo =
+            new_undo + [h.undo_stack[i]]
+
+        set i = i + 1
+    }
+
+    set h.undo_stack = new_undo
+
+    set h.redo_stack =
+        h.redo_stack + [last]
+
+    set h.stats.undo_count =
+        h.stats.undo_count + 1
+
+    set h.stats.version =
+        h.stats.version + 1
+
+    return h
+}
+
+<<< Redo last undone transaction >>>
+
+proc redo(
+    h : PieceTableHistory
+) -> PieceTableHistory {
+
+    if h.redo_stack.length == 0 {
+        return h
+    }
+
+    let last =
+        h.redo_stack[
+            h.redo_stack.length - 1
+        ]
+
+    let new_redo : [Transaction] = []
+
+    let i = 0
+
+    loop {
+
+        if i >= h.redo_stack.length - 1 {
+            break
+        }
+
+        set new_redo =
+            new_redo + [h.redo_stack[i]]
+
+        set i = i + 1
+    }
+
+    set h.redo_stack = new_redo
+
+    set h.undo_stack =
+        h.undo_stack + [last]
+
+    set h.stats.redo_count =
+        h.stats.redo_count + 1
+
+    set h.stats.version =
+        h.stats.version + 1
+
+    return h
+}
+
+<<< Clear history >>>
+
+proc clear(
+    h : PieceTableHistory
+) -> PieceTableHistory {
+
+    set h.undo_stack = []
+    set h.redo_stack = []
+    set h.current_tx.ops = []
+
+    set h.stats.version =
+        h.stats.version + 1
+
+    return h
+}
+
+<<< Accessors >>>
+
+proc total_operations(h : PieceTableHistory) -> int {
+    return h.stats.total_ops
+}
+
+proc total_transactions(h : PieceTableHistory) -> int {
+    return h.stats.total_transactions
+}
+
+proc undo_depth(h : PieceTableHistory) -> int {
+    return h.undo_stack.length
+}
+
+proc redo_depth(h : PieceTableHistory) -> int {
+    return h.redo_stack.length
+}
+
+<<< Stress undo/redo workload >>>
+
+proc stress_history(
+    h : PieceTableHistory,
+    iterations : int
+) -> PieceTableHistory {
+
+    let i = 0
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        set h = begin(h)
+
+        set h =
+            record(
+                h,
+                OperationKind.Insert,
+                i,
+                5,
+                "text"
+            )
+
+        set h = commit(h)
+
+        if i % 3 == 0 {
+            set h = undo(h)
+        }
+
+        if i % 5 == 0 {
+            set h = redo(h)
+        }
+
+        set i = i + 1
+    }
+
+    return h
+}
+
+<<< Full history suite >>>
+
+proc run_history_ultra() {
+
+    let h = new()
+
+    stress_history(h, 5000)
+}

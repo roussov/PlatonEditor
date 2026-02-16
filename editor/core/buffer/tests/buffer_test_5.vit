@@ -1,1 +1,261 @@
-#  stress test 5
+space platon.editor.core.buffer.tests.buffer_test_5
+
+pull platon.editor.core.buffer.piece_table.table as table
+pull platon.editor.core.buffer.piece_table.snapshot as snapshot
+pull platon.editor.core.buffer.history as history
+pull platon.editor.core.buffer.rope.rope_node as rope_node
+pull platon.editor.core.buffer.rope.rope_split as rope_split
+pull platon.editor.core.buffer.rope.rope_merge as rope_merge
+
+<<< Buffer Integration Test 5 ULTRA MAX++++ >>>
+<<< Property-based stress + replay log + extreme invariant enforcement >>>
+
+
+proc assert_true(cond : bool) {
+    if not cond {
+        panic("Assertion failed")
+    }
+}
+
+proc assert_eq(a : int, b : int) {
+    if a != b {
+        panic("Assertion failed")
+    }
+}
+
+<<< Deterministic RNG for reproducible fuzz >>> 
+
+form Rng {
+    seed : int
+}
+
+proc rng_new(seed : int) -> Rng {
+    return Rng { seed: seed }
+}
+
+proc rng_next(r : Rng) -> Rng {
+    set r.seed = (r.seed * 48271) % 2147483647
+    return r
+}
+
+proc rng_val(r : Rng, max : int) -> [Rng] {
+
+    if max <= 0 {
+        return [r, 0]
+    }
+
+    set r = rng_next(r)
+    let v = r.seed % max
+    return [r, v]
+}
+
+<<< Replay log model >>> 
+
+form OpLog {
+    op : int
+    pos : int
+    len : int
+    char : string
+}
+
+const OP_INSERT : int = 0
+const OP_DELETE : int = 1
+
+const MAX_LOG : int = 5000
+
+let replay_count : int = 0
+
+<<< Extreme property fuzz test >>> 
+
+proc property_fuzz_extreme() {
+
+    let te = table.new_engine()
+    let pt = table.new("")
+
+    let r = rng_new(777)
+
+    let log_index = 0
+    let i = 0
+
+    loop {
+
+        if i >= 2000 {
+            break
+        }
+
+        let rv = rng_val(r, 2)
+        set r = rv[0]
+        let op = rv[1]
+
+        if op == OP_INSERT {
+
+            let rv2 =
+                rng_val(r, pt.total_length + 1)
+
+            set r = rv2[0]
+            let pos = rv2[1]
+
+            set pt =
+                table.insert(te, pt, pos, "A")
+
+        } else if pt.total_length > 0 {
+
+            let rv3 =
+                rng_val(r, pt.total_length)
+
+            set r = rv3[0]
+            let pos2 = rv3[1]
+
+            set pt =
+                table.delete(te, pt, pos2, 1)
+        }
+
+        let text =
+            table.materialize(pt)
+
+        assert_eq(text.length, pt.total_length)
+
+        set i = i + 1
+    }
+
+    assert_true(pt.total_length >= 0)
+}
+
+<<< Deterministic replay validation >>> 
+
+proc deterministic_replay() {
+
+    let te = table.new_engine()
+    let pt = table.new("")
+
+    set pt =
+        table.insert(te, pt, 0, "A")
+
+    set pt =
+        table.insert(te, pt, 1, "B")
+
+    set pt =
+        table.insert(te, pt, 2, "C")
+
+    set pt =
+        table.delete(te, pt, 1, 1)
+
+    let result =
+        table.materialize(pt)
+
+    assert_true(result == "AC")
+}
+
+<<< Extreme rope integrity under massive merge/split >>> 
+
+proc rope_extreme_integrity() {
+
+    let rne = rope_node.new()
+    let rme = rope_merge.new(4)
+    let rse = rope_split.new()
+
+    let root =
+        rope_node.leaf(rne, "Z")
+
+    let current = root
+    let i = 0
+
+    loop {
+
+        if i >= 3000 {
+            break
+        }
+
+        let leaf =
+            rope_node.leaf(rne, "Y")
+
+        set current =
+            rope_merge.merge_full(
+                rme,
+                current,
+                leaf
+            )
+
+        if i % 13 == 0 {
+
+            let parts =
+                rope_split.split_rebalanced(
+                    rse,
+                    current,
+                    i % 9
+                )
+
+            set current =
+                rope_merge.merge_full(
+                    rme,
+                    parts[0],
+                    parts[1]
+                )
+        }
+
+        let first =
+            rope_node.char_at(current, 0)
+
+        assert_true(first == "Z")
+
+        set i = i + 1
+    }
+}
+
+<<< Snapshot + history extreme interleave >>> 
+
+proc snapshot_history_interleave_extreme() {
+
+    let te = table.new_engine()
+    let pt = table.new("ROOT")
+
+    let se = snapshot.new()
+    let h = history.new()
+
+    let i = 0
+
+    loop {
+
+        if i >= 400 {
+            break
+        }
+
+        set pt =
+            table.insert(te, pt, pt.total_length, "X")
+
+        set h = history.begin(h)
+
+        set h =
+            history.record(
+                h,
+                history.OperationKind.Insert,
+                pt.total_length,
+                1,
+                "X"
+            )
+
+        set h = history.commit(h)
+
+        if i % 5 == 0 {
+
+            set se =
+                snapshot.create_snapshot(
+                    se,
+                    pt.pieces,
+                    0
+                )
+        }
+
+        set i = i + 1
+    }
+
+    assert_true(history.undo_depth(h) == 400)
+}
+
+proc run_all_tests() {
+
+    property_fuzz_extreme()
+    deterministic_replay()
+    rope_extreme_integrity()
+    snapshot_history_interleave_extreme()
+}

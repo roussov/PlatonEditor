@@ -1,1 +1,276 @@
-#  chunk indexing
+space platon.editor.core.buffer.huge.chunk_manager
+
+<<< Huge File Chunk Manager ULTRA MAX+++ >>>
+<<< Chunked buffer for 100MB+ files, lazy loading, partial unload, paging model >>>
+
+const DEFAULT_CHUNK_SIZE : int = 65536
+
+form Chunk {
+    id : int
+    start_offset : int
+    length : int
+    loaded : bool
+    dirty : bool
+}
+
+form ChunkManager {
+    chunks : [Chunk]
+    total_size : int
+    chunk_size : int
+    loaded_chunks : int
+    version : int
+}
+
+<<< Create new chunk manager for huge file >>>
+
+proc new(total_size : int, chunk_size : int) -> ChunkManager {
+
+    let size = chunk_size
+
+    if size <= 0 {
+        set size = DEFAULT_CHUNK_SIZE
+    }
+
+    let chunk_count = total_size / size
+
+    let chunks : [Chunk] = []
+
+    let i = 0
+
+    loop {
+        if i >= chunk_count {
+            break
+        }
+
+        set chunks =
+            chunks +
+            [Chunk {
+                id: i,
+                start_offset: i * size,
+                length: size,
+                loaded: false,
+                dirty: false
+            }]
+
+        set i = i + 1
+    }
+
+    return ChunkManager {
+        chunks: chunks,
+        total_size: total_size,
+        chunk_size: size,
+        loaded_chunks: 0,
+        version: 1
+    }
+}
+
+<<< Get chunk index from offset >>>
+
+proc chunk_index(cm : ChunkManager, offset : int) -> int {
+    return offset / cm.chunk_size
+}
+
+<<< Load chunk lazily >>>
+
+proc load_chunk(cm : ChunkManager, index : int) -> ChunkManager {
+
+    if index < 0 or index >= cm.chunks.length {
+        return cm
+    }
+
+    let c = cm.chunks[index]
+
+    if not c.loaded {
+
+        set c.loaded = true
+        set cm.loaded_chunks = cm.loaded_chunks + 1
+        set cm.version = cm.version + 1
+    }
+
+    set cm.chunks[index] = c
+
+    return cm
+}
+
+<<< Unload chunk if clean >>>
+
+proc unload_chunk(cm : ChunkManager, index : int) -> ChunkManager {
+
+    if index < 0 or index >= cm.chunks.length {
+        return cm
+    }
+
+    let c = cm.chunks[index]
+
+    if c.loaded and not c.dirty {
+
+        set c.loaded = false
+        set cm.loaded_chunks = cm.loaded_chunks - 1
+        set cm.version = cm.version + 1
+    }
+
+    set cm.chunks[index] = c
+
+    return cm
+}
+
+<<< Mark chunk dirty >>>
+
+proc mark_dirty(cm : ChunkManager, offset : int) -> ChunkManager {
+
+    let idx = chunk_index(cm, offset)
+
+    if idx < 0 or idx >= cm.chunks.length {
+        return cm
+    }
+
+    let c = cm.chunks[idx]
+
+    set c.dirty = true
+    set cm.chunks[idx] = c
+    set cm.version = cm.version + 1
+
+    return cm
+}
+
+<<< Access chunk for edit (auto load) >>>
+
+proc access_chunk(cm : ChunkManager, offset : int) -> ChunkManager {
+
+    let idx = chunk_index(cm, offset)
+
+    set cm = load_chunk(cm, idx)
+
+    return cm
+}
+
+<<< Shift chunks after insertion/deletion >>>
+
+proc shift_after_edit(
+    cm : ChunkManager,
+    at_offset : int,
+    delta : int
+) -> ChunkManager {
+
+    let i = 0
+
+    loop {
+
+        if i >= cm.chunks.length {
+            break
+        }
+
+        let c = cm.chunks[i]
+
+        if c.start_offset >= at_offset {
+            set c.start_offset = c.start_offset + delta
+        }
+
+        set cm.chunks[i] = c
+
+        set i = i + 1
+    }
+
+    set cm.total_size = cm.total_size + delta
+    set cm.version = cm.version + 1
+
+    return cm
+}
+
+<<< Get loaded chunk count >>>
+
+proc loaded_count(cm : ChunkManager) -> int {
+    return cm.loaded_chunks
+}
+
+<<< Stress random chunk access >>>
+
+proc stress_random_access(
+    cm : ChunkManager,
+    iterations : int
+) -> ChunkManager {
+
+    let i = 0
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        let offset =
+            (i * 104729) % cm.total_size
+
+        set cm = access_chunk(cm, offset)
+
+        set i = i + 1
+    }
+
+    return cm
+}
+
+<<< Stress load/unload cycle >>>
+
+proc stress_paging(
+    cm : ChunkManager,
+    iterations : int
+) -> ChunkManager {
+
+    let i = 0
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        let idx = i % cm.chunks.length
+
+        set cm = load_chunk(cm, idx)
+        set cm = unload_chunk(cm, idx)
+
+        set i = i + 1
+    }
+
+    return cm
+}
+
+<<< Reset all chunks >>>
+
+proc reset(cm : ChunkManager) -> ChunkManager {
+
+    let i = 0
+
+    loop {
+
+        if i >= cm.chunks.length {
+            break
+        }
+
+        let c = cm.chunks[i]
+
+        set c.loaded = false
+        set c.dirty = false
+
+        set cm.chunks[i] = c
+
+        set i = i + 1
+    }
+
+    set cm.loaded_chunks = 0
+    set cm.version = 1
+
+    return cm
+}
+
+<<< Full chunk manager suite >>>
+
+proc run_chunk_manager_ultra() {
+
+    let cm = new(200000000, DEFAULT_CHUNK_SIZE)
+
+    set cm = stress_random_access(cm, 10000)
+    set cm = stress_paging(cm, 5000)
+
+    reset(cm)
+}

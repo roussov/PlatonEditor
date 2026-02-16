@@ -1,1 +1,210 @@
-#  page up/down logic
+space platon.editor.core.cursor.navigation.page_navigation
+
+pull platon.editor.core.buffer.buffer as buffer
+pull platon.editor.core.buffer.cursor as cursor
+pull platon.editor.core.cursor.navigation.line_navigation as line_nav
+
+<<< Page Navigation ULTRA MAX CORE >>>
+<<< Viewport-based page up/down navigation >>>
+
+
+<<< ===================================================== >>
+<<< Viewport Model >>
+<<< ===================================================== >>>
+
+form Viewport {
+    top_line      : int
+    height        : int
+    total_lines   : int
+}
+
+
+<<< ===================================================== >>
+<<< Helpers >>
+<<< ===================================================== >>>
+
+proc clamp(v : int, min : int, max : int) -> int {
+
+    if v < min { return min }
+    if v > max { return max }
+
+    return v
+}
+
+
+proc offset_of_line(
+    text : string,
+    target_line : int
+) -> int {
+
+    let i = 0
+    let line = 0
+
+    if target_line <= 0 {
+        return 0
+    }
+
+    loop {
+
+        if i >= text.length {
+            break
+        }
+
+        if text[i] == 10 {
+            set line = line + 1
+
+            if line == target_line {
+                return i + 1
+            }
+        }
+
+        set i = i + 1
+    }
+
+    return text.length
+}
+
+
+<<< ===================================================== >>
+<<< Page Down >>
+<<< ===================================================== >>>
+
+proc page_down(
+    b : buffer.Buffer,
+    c : cursor.Cursor,
+    vp : Viewport
+) -> [cursor.Cursor] {
+
+    let text =
+        buffer.as_string(b)
+
+    let current_line =
+        line_nav.line_number(
+            text,
+            c.pos.offset
+        )
+
+    let desired_column =
+        line_nav.compute_column(
+            text,
+            c.pos.offset
+        )
+
+    let target_line =
+        clamp(
+            current_line + vp.height,
+            0,
+            vp.total_lines
+        )
+
+    let target_offset =
+        offset_of_line(
+            text,
+            target_line
+        )
+
+    let new_offset =
+        line_nav.clamp_column(
+            text,
+            target_offset,
+            desired_column
+        )
+
+    return [
+        cursor.move_to(b, c, new_offset),
+        Viewport {
+            top_line: clamp(
+                vp.top_line + vp.height,
+                0,
+                vp.total_lines
+            ),
+            height: vp.height,
+            total_lines: vp.total_lines
+        }
+    ]
+}
+
+
+<<< ===================================================== >>
+<<< Page Up >>
+<<< ===================================================== >>>
+
+proc page_up(
+    b : buffer.Buffer,
+    c : cursor.Cursor,
+    vp : Viewport
+) -> [cursor.Cursor] {
+
+    let text =
+        buffer.as_string(b)
+
+    let current_line =
+        line_nav.line_number(
+            text,
+            c.pos.offset
+        )
+
+    let desired_column =
+        line_nav.compute_column(
+            text,
+            c.pos.offset
+        )
+
+    let target_line =
+        clamp(
+            current_line - vp.height,
+            0,
+            vp.total_lines
+        )
+
+    let target_offset =
+        offset_of_line(
+            text,
+            target_line
+        )
+
+    let new_offset =
+        line_nav.clamp_column(
+            text,
+            target_offset,
+            desired_column
+        )
+
+    return [
+        cursor.move_to(b, c, new_offset),
+        Viewport {
+            top_line: clamp(
+                vp.top_line - vp.height,
+                0,
+                vp.total_lines
+            ),
+            height: vp.height,
+            total_lines: vp.total_lines
+        }
+    ]
+}
+
+
+<<< ===================================================== >>
+<<< Half Page Movement >>
+<<< ===================================================== >>>
+
+proc half_page_down(
+    b : buffer.Buffer,
+    c : cursor.Cursor,
+    vp : Viewport
+) -> [cursor.Cursor] {
+
+    set vp.height = vp.height / 2
+    return page_down(b, c, vp)
+}
+
+proc half_page_up(
+    b : buffer.Buffer,
+    c : cursor.Cursor,
+    vp : Viewport
+) -> [cursor.Cursor] {
+
+    set vp.height = vp.height / 2
+    return page_up(b, c, vp)
+}

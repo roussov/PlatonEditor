@@ -1,12 +1,252 @@
-space platon.editor.core.buffer
+space platon.editor.core.buffer.buffer
+
+pull platon.editor.core.buffer.piece_table.table as table
+pull platon.editor.core.buffer.transaction.transaction as tx
+pull platon.editor.core.buffer.transaction.journal as journal
+
+<<< Unified Buffer Engine ULTRA MAX CORE >>>
+<<< PieceTable + Transaction + Undo/Redo + Snapshot + Integrity >>>
+
+
+<<< ===================================================== >>
+<<< Models >>
+<<< ===================================================== >>>
 
 form Buffer {
-    id : int
-    length : int
+    engine        : table.Engine
+    state         : table.Table
+    transactions  : tx.TransactionState
+    version       : int
 }
 
-proc insert(b : Buffer, pos : int, text : string) {}
-proc delete(b : Buffer, start : int, end : int) {}
-proc slice(b : Buffer, start : int, end : int) -> string {
-    give ""
+<<< ===================================================== >>
+<<< Initialization >>
+<<< ===================================================== >>>
+
+proc new(initial_text : string) -> Buffer {
+
+    let engine = table.new_engine()
+    let state  = table.new(initial_text)
+    let transactions = tx.new()
+
+    return Buffer {
+        engine: engine,
+        state: state,
+        transactions: transactions,
+        version: 0
+    }
+}
+
+<<< ===================================================== >>
+<<< Basic Query >>
+<<< ===================================================== >>>
+
+proc length(b : Buffer) -> int {
+    return b.state.total_length
+}
+
+proc materialize(b : Buffer) -> string {
+    return table.materialize(b.state)
+}
+
+proc version(b : Buffer) -> int {
+    return b.version
+}
+
+<<< ===================================================== >>
+<<< Transaction Lifecycle >>
+<<< ===================================================== >>>
+
+proc begin(b : Buffer) -> Buffer {
+
+    set b.transactions =
+        tx.begin(b.transactions)
+
+    return b
+}
+
+proc commit(b : Buffer) -> Buffer {
+
+    set b.transactions =
+        tx.commit(b.transactions)
+
+    set b.version = b.version + 1
+
+    return b
+}
+
+proc undo(b : Buffer) -> Buffer {
+
+    set b.transactions =
+        tx.undo(b.transactions)
+
+    set b.version = b.version + 1
+
+    return b
+}
+
+proc redo(b : Buffer) -> Buffer {
+
+    set b.transactions =
+        tx.redo(b.transactions)
+
+    set b.version = b.version + 1
+
+    return b
+}
+
+<<< ===================================================== >>
+<<< Insert >>
+<<< ===================================================== >>>
+
+proc insert(
+    b : Buffer,
+    pos : int,
+    text : string
+) -> Buffer {
+
+    set b.transactions =
+        tx.record_insert(
+            b.transactions,
+            pos,
+            text
+        )
+
+    set b.state =
+        table.insert(
+            b.engine,
+            b.state,
+            pos,
+            text
+        )
+
+    return b
+}
+
+<<< ===================================================== >>
+<<< Delete >>
+<<< ===================================================== >>>
+
+proc delete(
+    b : Buffer,
+    pos : int,
+    len : int
+) -> Buffer {
+
+    let old_text =
+        table.slice(
+            b.state,
+            pos,
+            len
+        )
+
+    set b.transactions =
+        tx.record_delete(
+            b.transactions,
+            pos,
+            len,
+            old_text
+        )
+
+    set b.state =
+        table.delete(
+            b.engine,
+            b.state,
+            pos,
+            len
+        )
+
+    return b
+}
+
+<<< ===================================================== >>
+<<< Replace >>
+<<< ===================================================== >>>
+
+proc replace(
+    b : Buffer,
+    pos : int,
+    len : int,
+    text : string
+) -> Buffer {
+
+    let old_text =
+        table.slice(
+            b.state,
+            pos,
+            len
+        )
+
+    set b.transactions =
+        tx.record_replace(
+            b.transactions,
+            pos,
+            len,
+            old_text
+        )
+
+    set b.state =
+        table.replace(
+            b.engine,
+            b.state,
+            pos,
+            len,
+            text
+        )
+
+    return b
+}
+
+<<< ===================================================== >>
+<<< Snapshot >>
+<<< ===================================================== >>>
+
+proc snapshot(b : Buffer) -> int {
+    return tx.snapshot_tx(b.transactions)
+}
+
+proc restore(b : Buffer, tx_id : int) -> Buffer {
+
+    set b.transactions =
+        tx.restore_to(
+            b.transactions,
+            tx_id
+        )
+
+    set b.version = b.version + 1
+
+    return b
+}
+
+<<< ===================================================== >>
+<<< Integrity >>
+<<< ===================================================== >>>
+
+proc checksum(b : Buffer) -> int {
+    return tx.journal_checksum(b.transactions)
+}
+
+proc validate(b : Buffer) -> bool {
+
+    let mat =
+        table.materialize(b.state)
+
+    return mat.length == b.state.total_length
+}
+
+<<< ===================================================== >>
+<<< Clear >>
+<<< ===================================================== >>>
+
+proc clear(b : Buffer) -> Buffer {
+
+    set b.state =
+        table.new("")
+
+    set b.transactions =
+        tx.clear(b.transactions)
+
+    set b.version = b.version + 1
+
+    return b
 }

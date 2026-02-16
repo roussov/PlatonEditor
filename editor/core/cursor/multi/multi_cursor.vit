@@ -1,5 +1,305 @@
-space platon.editor.core.cursor.multi
+space platon.editor.core.cursor.multi.multi_cursor
 
-proc add_cursor() {}
-proc remove_cursor(id : int) {}
-proc clear_all() {}
+pull platon.editor.core.buffer.buffer as buffer
+pull platon.editor.core.buffer.cursor as cursor
+
+<<< Multi Cursor Engine ULTRA MAX CORE >>>
+<<< Batch edit + conflict normalization + deterministic ordering >>>
+
+
+<<< ===================================================== >>
+<<< Models >>
+<<< ===================================================== >>>
+
+form MultiCursor {
+    set : cursor.CursorSet
+}
+
+
+<<< ===================================================== >>
+<<< Initialization >>
+<<< ===================================================== >>>
+
+proc new() -> MultiCursor {
+
+    return MultiCursor {
+        set: cursor.new_set()
+    }
+}
+
+
+<<< ===================================================== >>
+<<< Sorting Helpers >>
+<<< ===================================================== >>>
+
+proc sort_by_offset(
+    mc : MultiCursor
+) -> MultiCursor {
+
+    let i = 0
+
+    loop {
+
+        if i >= mc.set.cursors.length {
+            break
+        }
+
+        let j = i + 1
+
+        loop {
+
+            if j >= mc.set.cursors.length {
+                break
+            }
+
+            if mc.set.cursors[j].pos.offset <
+               mc.set.cursors[i].pos.offset {
+
+                let tmp =
+                    mc.set.cursors[i]
+
+                set mc.set.cursors[i] =
+                    mc.set.cursors[j]
+
+                set mc.set.cursors[j] =
+                    tmp
+            }
+
+            set j = j + 1
+        }
+
+        set i = i + 1
+    }
+
+    return mc
+}
+
+
+<<< ===================================================== >>
+<<< Deduplicate Overlapping Cursors >>
+<<< ===================================================== >>>
+
+proc deduplicate(
+    mc : MultiCursor
+) -> MultiCursor {
+
+    set mc =
+        sort_by_offset(mc)
+
+    let result = []
+    let i = 0
+
+    loop {
+
+        if i >= mc.set.cursors.length {
+            break
+        }
+
+        if result.length == 0 {
+
+            set result =
+                result + [mc.set.cursors[i]]
+
+        } else {
+
+            let last =
+                result[result.length - 1]
+
+            if last.pos.offset !=
+               mc.set.cursors[i].pos.offset {
+
+                set result =
+                    result + [mc.set.cursors[i]]
+            }
+        }
+
+        set i = i + 1
+    }
+
+    set mc.set.cursors = result
+
+    return mc
+}
+
+
+<<< ===================================================== >>
+<<< Batch Insert >>
+<<< Apply from right to left to preserve offsets >>
+<<< ===================================================== >>>
+
+proc batch_insert(
+    b : buffer.Buffer,
+    mc : MultiCursor,
+    text : string
+) -> [buffer.Buffer] {
+
+    set mc =
+        sort_by_offset(mc)
+
+    let i =
+        mc.set.cursors.length - 1
+
+    loop {
+
+        if i < 0 {
+            break
+        }
+
+        let off =
+            mc.set.cursors[i].pos.offset
+
+        set b =
+            buffer.insert(
+                b,
+                off,
+                text
+            )
+
+        set mc.set =
+            cursor.adjust_set_after_insert(
+                mc.set,
+                off,
+                text.length
+            )
+
+        set i = i - 1
+    }
+
+    return [b, mc]
+}
+
+
+<<< ===================================================== >>
+<<< Batch Delete >>
+<<< ===================================================== >>>
+
+proc batch_delete(
+    b : buffer.Buffer,
+    mc : MultiCursor,
+    len : int
+) -> [buffer.Buffer] {
+
+    set mc =
+        sort_by_offset(mc)
+
+    let i =
+        mc.set.cursors.length - 1
+
+    loop {
+
+        if i < 0 {
+            break
+        }
+
+        let off =
+            mc.set.cursors[i].pos.offset
+
+        set b =
+            buffer.delete(
+                b,
+                off,
+                len
+            )
+
+        set mc.set =
+            cursor.adjust_set_after_delete(
+                mc.set,
+                off,
+                len
+            )
+
+        set i = i - 1
+    }
+
+    return [b, mc]
+}
+
+
+<<< ===================================================== >>
+<<< Move All Cursors >>
+<<< ===================================================== >>>
+
+proc move_all_left(
+    b : buffer.Buffer,
+    mc : MultiCursor
+) -> MultiCursor {
+
+    let i = 0
+
+    loop {
+
+        if i >= mc.set.cursors.length {
+            break
+        }
+
+        set mc.set.cursors[i] =
+            cursor.move_left(
+                b,
+                mc.set.cursors[i]
+            )
+
+        set i = i + 1
+    }
+
+    return mc
+}
+
+proc move_all_right(
+    b : buffer.Buffer,
+    mc : MultiCursor
+) -> MultiCursor {
+
+    let i = 0
+
+    loop {
+
+        if i >= mc.set.cursors.length {
+            break
+        }
+
+        set mc.set.cursors[i] =
+            cursor.move_right(
+                b,
+                mc.set.cursors[i]
+            )
+
+        set i = i + 1
+    }
+
+    return mc
+}
+
+
+<<< ===================================================== >>
+<<< Add Cursor >>
+<<< ===================================================== >>>
+
+proc add_cursor(
+    mc : MultiCursor,
+    offset : int
+) -> MultiCursor {
+
+    set mc.set =
+        cursor.add_cursor(
+            mc.set,
+            offset
+        )
+
+    set mc =
+        deduplicate(mc)
+
+    return mc
+}
+
+
+<<< ===================================================== >>
+<<< Clear All >>
+<<< ===================================================== >>>
+
+proc clear(mc : MultiCursor) -> MultiCursor {
+
+    set mc.set =
+        cursor.new_set()
+
+    return mc
+}

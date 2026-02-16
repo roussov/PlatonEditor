@@ -1,1 +1,209 @@
-#  fragmentation tracking
+space platon.editor.core.buffer.memory.fragmentation_monitor
+
+pull platon.editor.core.buffer.memory.arena as arena
+
+<<< Fragmentation Monitor ULTRA MAX+++ >>>
+<<< Tracks memory pressure, internal fragmentation, growth patterns, watermarks >>>
+
+form FragmentationSnapshot {
+    total_capacity : int
+    total_used : int
+    free_bytes : int
+    fragmentation_ratio : int
+    block_count : int
+    version : int
+}
+
+form FragmentationState {
+    high_watermark : int
+    low_watermark : int
+    snapshots : [FragmentationSnapshot]
+    checks : int
+    alerts : int
+    version : int
+}
+
+let monitor = FragmentationState {
+    high_watermark: 0,
+    low_watermark: 0,
+    snapshots: [],
+    checks: 0,
+    alerts: 0,
+    version: 1
+}
+
+<<< Compute fragmentation ratio (percentage * 100) >>>
+
+proc compute_ratio(
+    total_capacity : int,
+    total_used : int
+) -> int {
+
+    if total_capacity == 0 {
+        return 0
+    }
+
+    let free = total_capacity - total_used
+
+    return (free * 100) / total_capacity
+}
+
+<<< Take snapshot of arena state >>>
+
+proc snapshot(a : arena.Arena) {
+
+    let cap = arena.total_capacity(a)
+    let used = arena.total_used(a)
+    let free = cap - used
+
+    let ratio = compute_ratio(cap, used)
+
+    let snap = FragmentationSnapshot {
+        total_capacity: cap,
+        total_used: used,
+        free_bytes: free,
+        fragmentation_ratio: ratio,
+        block_count: a.blocks.length,
+        version: monitor.version + 1
+    }
+
+    set monitor.snapshots =
+        monitor.snapshots + [snap]
+
+    set monitor.checks = monitor.checks + 1
+    set monitor.version = monitor.version + 1
+
+    <<< Update watermarks >>>
+    if used > monitor.high_watermark {
+        set monitor.high_watermark = used
+    }
+
+    if monitor.low_watermark == 0 or
+       used < monitor.low_watermark {
+        set monitor.low_watermark = used
+    }
+
+    <<< Trigger alert if fragmentation > 40% >>>
+    if ratio > 40 {
+        set monitor.alerts = monitor.alerts + 1
+    }
+}
+
+<<< Get last snapshot >>>
+
+proc last_snapshot() -> FragmentationSnapshot {
+
+    if monitor.snapshots.length == 0 {
+
+        return FragmentationSnapshot {
+            total_capacity: 0,
+            total_used: 0,
+            free_bytes: 0,
+            fragmentation_ratio: 0,
+            block_count: 0,
+            version: 0
+        }
+    }
+
+    return monitor.snapshots[
+        monitor.snapshots.length - 1
+    ]
+}
+
+<<< Clear snapshot history >>>
+
+proc reset_monitor() {
+
+    set monitor.snapshots = []
+    set monitor.high_watermark = 0
+    set monitor.low_watermark = 0
+    set monitor.checks = 0
+    set monitor.alerts = 0
+    set monitor.version = 1
+}
+
+<<< Accessors >>>
+
+proc total_checks() -> int {
+    return monitor.checks
+}
+
+proc total_alerts() -> int {
+    return monitor.alerts
+}
+
+proc high_watermark() -> int {
+    return monitor.high_watermark
+}
+
+proc low_watermark() -> int {
+    return monitor.low_watermark
+}
+
+<<< Stress fragmentation growth pattern >>>
+
+proc stress_growth_pattern(
+    a : arena.Arena,
+    iterations : int
+) -> arena.Arena {
+
+    let i = 0
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        set a = arena.alloc(a, 4096)
+
+        if i % 5 == 0 {
+            snapshot(a)
+        }
+
+        set i = i + 1
+    }
+
+    return a
+}
+
+<<< Stress reset and reuse pattern >>>
+
+proc stress_reset_pattern(
+    a : arena.Arena,
+    cycles : int
+) -> arena.Arena {
+
+    let i = 0
+
+    loop {
+
+        if i >= cycles {
+            break
+        }
+
+        set a = arena.alloc(a, 8192)
+
+        snapshot(a)
+
+        set a = arena.reset(a)
+
+        snapshot(a)
+
+        set i = i + 1
+    }
+
+    return a
+}
+
+<<< Full fragmentation monitor suite >>>
+
+proc run_fragmentation_monitor_ultra() {
+
+    reset_monitor()
+
+    let a = arena.new(arena.DEFAULT_BLOCK_SIZE)
+
+    let a2 = stress_growth_pattern(a, 2000)
+    stress_reset_pattern(a2, 50)
+}

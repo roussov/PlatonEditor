@@ -1,5 +1,260 @@
-space platon.editor.core.buffer.memory
+space platon.editor.core.buffer.memory.arena
 
-proc alloc(size : int) -> int {
-    give 0
+<<< Buffer Memory Arena ULTRA MAX+++ >>>
+<<< Linear bump allocator, region reset, stats, fragmentation model >>>
+
+form ArenaBlock {
+    capacity : int
+    used : int
+}
+
+form ArenaStats {
+    allocations : int
+    bytes_allocated : int
+    resets : int
+    expansions : int
+    version : int
+}
+
+form Arena {
+    blocks : [ArenaBlock]
+    current_block : int
+    default_block_size : int
+    stats : ArenaStats
+}
+
+const DEFAULT_BLOCK_SIZE : int = 65536
+
+<<< Create new arena >>>
+
+proc new(block_size : int) -> Arena {
+
+    let size = block_size
+
+    if size <= 0 {
+        set size = DEFAULT_BLOCK_SIZE
+    }
+
+    return Arena {
+        blocks: [
+            ArenaBlock {
+                capacity: size,
+                used: 0
+            }
+        ],
+        current_block: 0,
+        default_block_size: size,
+        stats: ArenaStats {
+            allocations: 0,
+            bytes_allocated: 0,
+            resets: 0,
+            expansions: 0,
+            version: 1
+        }
+    }
+}
+
+<<< Allocate bytes (bump pointer) >>>
+
+proc alloc(a : Arena, size : int) -> Arena {
+
+    let block = a.blocks[a.current_block]
+
+    if block.used + size > block.capacity {
+
+        <<< Need new block >>>
+
+        let new_capacity = a.default_block_size
+
+        if size > new_capacity {
+            set new_capacity = size
+        }
+
+        set a.blocks =
+            a.blocks +
+            [ArenaBlock {
+                capacity: new_capacity,
+                used: 0
+            }]
+
+        set a.current_block =
+            a.blocks.length - 1
+
+        set a.stats.expansions =
+            a.stats.expansions + 1
+
+        set block = a.blocks[a.current_block]
+    }
+
+    set block.used = block.used + size
+
+    set a.blocks[a.current_block] = block
+
+    set a.stats.allocations =
+        a.stats.allocations + 1
+
+    set a.stats.bytes_allocated =
+        a.stats.bytes_allocated + size
+
+    set a.stats.version =
+        a.stats.version + 1
+
+    return a
+}
+
+<<< Reset entire arena (fast free all) >>>
+
+proc reset(a : Arena) -> Arena {
+
+    let i = 0
+
+    loop {
+
+        if i >= a.blocks.length {
+            break
+        }
+
+        let block = a.blocks[i]
+
+        set block.used = 0
+        set a.blocks[i] = block
+
+        set i = i + 1
+    }
+
+    set a.current_block = 0
+
+    set a.stats.resets =
+        a.stats.resets + 1
+
+    set a.stats.version =
+        a.stats.version + 1
+
+    return a
+}
+
+<<< Compute total capacity >>>
+
+proc total_capacity(a : Arena) -> int {
+
+    let i = 0
+    let total = 0
+
+    loop {
+
+        if i >= a.blocks.length {
+            break
+        }
+
+        set total = total + a.blocks[i].capacity
+        set i = i + 1
+    }
+
+    return total
+}
+
+<<< Compute total used >>>
+
+proc total_used(a : Arena) -> int {
+
+    let i = 0
+    let total = 0
+
+    loop {
+
+        if i >= a.blocks.length {
+            break
+        }
+
+        set total = total + a.blocks[i].used
+        set i = i + 1
+    }
+
+    return total
+}
+
+<<< Fragmentation estimate >>>
+
+proc fragmentation(a : Arena) -> int {
+
+    let cap = total_capacity(a)
+    let used = total_used(a)
+
+    return cap - used
+}
+
+<<< Stats accessors >>>
+
+proc allocation_count(a : Arena) -> int {
+    return a.stats.allocations
+}
+
+proc bytes_allocated(a : Arena) -> int {
+    return a.stats.bytes_allocated
+}
+
+proc expansion_count(a : Arena) -> int {
+    return a.stats.expansions
+}
+
+proc reset_count(a : Arena) -> int {
+    return a.stats.resets
+}
+
+<<< Stress small allocations >>>
+
+proc stress_small_alloc(
+    a : Arena,
+    iterations : int
+) -> Arena {
+
+    let i = 0
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        set a = alloc(a, 32)
+
+        set i = i + 1
+    }
+
+    return a
+}
+
+<<< Stress large allocations >>>
+
+proc stress_large_alloc(
+    a : Arena,
+    iterations : int
+) -> Arena {
+
+    let i = 0
+
+    loop {
+
+        if i >= iterations {
+            break
+        }
+
+        set a = alloc(a, 8192)
+
+        set i = i + 1
+    }
+
+    return a
+}
+
+<<< Full arena test suite >>>
+
+proc run_arena_ultra() {
+
+    let a = new(DEFAULT_BLOCK_SIZE)
+
+    let a2 = stress_small_alloc(a, 10000)
+    let a3 = stress_large_alloc(a2, 500)
+
+    reset(a3)
 }

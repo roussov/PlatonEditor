@@ -1,1 +1,320 @@
-#  structural navigation via AST
+space platon.editor.core.cursor.navigation.ast_navigation
+
+pull platon.editor.core.buffer.buffer as buffer
+pull platon.editor.core.buffer.cursor as cursor
+
+<<< AST Navigation Engine ULTRA MAX CORE >>>
+<<< Structural navigation over parsed syntax tree >>>
+
+
+<<< ===================================================== >>
+<<< AST Models (Generic, language-agnostic) >>
+<<< ===================================================== >>>
+
+form AstNode {
+    id         : int
+    parent     : int
+    start      : int
+    end        : int
+    kind       : string
+    children   : [int]
+}
+
+form AstTree {
+    nodes      : [AstNode]
+    root_id    : int
+}
+
+
+<<< ===================================================== >>
+<<< Helpers >>
+<<< ===================================================== >>>
+
+proc find_node_at_offset(
+    tree : AstTree,
+    offset : int
+) -> int {
+
+    let i = 0
+    let result = -1
+
+    loop {
+
+        if i >= tree.nodes.length {
+            break
+        }
+
+        let n = tree.nodes[i]
+
+        if offset >= n.start and offset < n.end {
+
+            set result = n.id
+        }
+
+        set i = i + 1
+    }
+
+    return result
+}
+
+proc get_node(
+    tree : AstTree,
+    id : int
+) -> AstNode {
+
+    let i = 0
+
+    loop {
+
+        if i >= tree.nodes.length {
+            break
+        }
+
+        if tree.nodes[i].id == id {
+            return tree.nodes[i]
+        }
+
+        set i = i + 1
+    }
+
+    return AstNode {
+        id: -1,
+        parent: -1,
+        start: 0,
+        end: 0,
+        kind: "",
+        children: []
+    }
+}
+
+
+<<< ===================================================== >>
+<<< Parent Navigation >>
+<<< ===================================================== >>>
+
+proc move_to_parent(
+    b : buffer.Buffer,
+    tree : AstTree,
+    c : cursor.Cursor
+) -> cursor.Cursor {
+
+    let node_id =
+        find_node_at_offset(
+            tree,
+            c.pos.offset
+        )
+
+    if node_id < 0 {
+        return c
+    }
+
+    let node =
+        get_node(tree, node_id)
+
+    if node.parent < 0 {
+        return c
+    }
+
+    let parent =
+        get_node(tree, node.parent)
+
+    return cursor.move_to(
+        b,
+        c,
+        parent.start
+    )
+}
+
+
+<<< ===================================================== >>
+<<< First Child Navigation >>
+<<< ===================================================== >>>
+
+proc move_to_first_child(
+    b : buffer.Buffer,
+    tree : AstTree,
+    c : cursor.Cursor
+) -> cursor.Cursor {
+
+    let node_id =
+        find_node_at_offset(
+            tree,
+            c.pos.offset
+        )
+
+    if node_id < 0 {
+        return c
+    }
+
+    let node =
+        get_node(tree, node_id)
+
+    if node.children.length == 0 {
+        return c
+    }
+
+    let child =
+        get_node(tree, node.children[0])
+
+    return cursor.move_to(
+        b,
+        c,
+        child.start
+    )
+}
+
+
+<<< ===================================================== >>
+<<< Next Sibling Navigation >>
+<<< ===================================================== >>>
+
+proc move_to_next_sibling(
+    b : buffer.Buffer,
+    tree : AstTree,
+    c : cursor.Cursor
+) -> cursor.Cursor {
+
+    let node_id =
+        find_node_at_offset(
+            tree,
+            c.pos.offset
+        )
+
+    if node_id < 0 {
+        return c
+    }
+
+    let node =
+        get_node(tree, node_id)
+
+    if node.parent < 0 {
+        return c
+    }
+
+    let parent =
+        get_node(tree, node.parent)
+
+    let i = 0
+
+    loop {
+
+        if i >= parent.children.length {
+            break
+        }
+
+        if parent.children[i] == node_id {
+
+            if i + 1 < parent.children.length {
+
+                let sibling =
+                    get_node(tree, parent.children[i + 1])
+
+                return cursor.move_to(
+                    b,
+                    c,
+                    sibling.start
+                )
+            }
+
+            break
+        }
+
+        set i = i + 1
+    }
+
+    return c
+}
+
+
+<<< ===================================================== >>
+<<< Previous Sibling Navigation >>
+<<< ===================================================== >>>
+
+proc move_to_prev_sibling(
+    b : buffer.Buffer,
+    tree : AstTree,
+    c : cursor.Cursor
+) -> cursor.Cursor {
+
+    let node_id =
+        find_node_at_offset(
+            tree,
+            c.pos.offset
+        )
+
+    if node_id < 0 {
+        return c
+    }
+
+    let node =
+        get_node(tree, node_id)
+
+    if node.parent < 0 {
+        return c
+    }
+
+    let parent =
+        get_node(tree, node.parent)
+
+    let i = 0
+
+    loop {
+
+        if i >= parent.children.length {
+            break
+        }
+
+        if parent.children[i] == node_id {
+
+            if i - 1 >= 0 {
+
+                let sibling =
+                    get_node(tree, parent.children[i - 1])
+
+                return cursor.move_to(
+                    b,
+                    c,
+                    sibling.start
+                )
+            }
+
+            break
+        }
+
+        set i = i + 1
+    }
+
+    return c
+}
+
+
+<<< ===================================================== >>
+<<< Select Current Node >>
+<<< ===================================================== >>>
+
+proc select_current_node(
+    b : buffer.Buffer,
+    tree : AstTree,
+    c : cursor.Cursor
+) -> cursor.Cursor {
+
+    let node_id =
+        find_node_at_offset(
+            tree,
+            c.pos.offset
+        )
+
+    if node_id < 0 {
+        return c
+    }
+
+    let node =
+        get_node(tree, node_id)
+
+    return cursor.select_range(
+        b,
+        c,
+        node.start,
+        node.end
+    )
+}

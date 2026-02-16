@@ -1,6 +1,6 @@
 # PlatonEditor
 
-PlatonEditor is organized into clear folders so you can work step by step.
+PlatonEditor in Vitte is organized into clear folders so you can work step by step.
 You do not need to understand everything at once.
 
 ## What This Repository Contains

@@ -1,1 +1,232 @@
-#  linear selection
+space platon.editor.core.cursor.selection.linear
+
+pull platon.editor.core.buffer.buffer as buffer
+pull platon.editor.core.buffer.cursor as cursor
+
+<<< Linear Selection ULTRA MAX CORE >>>
+<<< Classic anchor/active range selection engine >>>
+
+
+<<< ===================================================== >>
+<<< Models >>
+<<< ===================================================== >>>
+
+pick SelectionMode {
+    case Inclusive
+    case Exclusive
+}
+
+form LinearSelection {
+    anchor_offset : int
+    active_offset : int
+    mode          : SelectionMode
+}
+
+
+<<< ===================================================== >>
+<<< Helpers >>
+<<< ===================================================== >>>
+
+proc is_empty(sel : LinearSelection) -> bool {
+    return sel.anchor_offset == sel.active_offset
+}
+
+proc min(a : int, b : int) -> int {
+    if a < b { return a }
+    return b
+}
+
+proc max(a : int, b : int) -> int {
+    if a > b { return a }
+    return b
+}
+
+proc start(sel : LinearSelection) -> int {
+    return min(sel.anchor_offset, sel.active_offset)
+}
+
+proc end(sel : LinearSelection) -> int {
+
+    if sel.mode is SelectionMode.Inclusive {
+        return max(sel.anchor_offset, sel.active_offset) + 1
+    }
+
+    return max(sel.anchor_offset, sel.active_offset)
+}
+
+proc direction(sel : LinearSelection) -> int {
+
+    if sel.active_offset >= sel.anchor_offset {
+        return 1
+    }
+
+    return -1
+}
+
+
+<<< ===================================================== >>
+<<< Creation >>
+<<< ===================================================== >>>
+
+proc new(
+    anchor : int,
+    active : int
+) -> LinearSelection {
+
+    return LinearSelection {
+        anchor_offset: anchor,
+        active_offset: active,
+        mode: SelectionMode.Exclusive
+    }
+}
+
+proc with_mode(
+    sel : LinearSelection,
+    mode : SelectionMode
+) -> LinearSelection {
+
+    set sel.mode = mode
+    return sel
+}
+
+
+<<< ===================================================== >>
+<<< Update Active >>
+<<< ===================================================== >>>
+
+proc update_active(
+    sel : LinearSelection,
+    new_active : int
+) -> LinearSelection {
+
+    set sel.active_offset = new_active
+    return sel
+}
+
+proc collapse_to_active(
+    sel : LinearSelection
+) -> LinearSelection {
+
+    return LinearSelection {
+        anchor_offset: sel.active_offset,
+        active_offset: sel.active_offset,
+        mode: sel.mode
+    }
+}
+
+
+<<< ===================================================== >>
+<<< Buffer Integration >>
+<<< ===================================================== >>>
+
+proc extract(
+    b : buffer.Buffer,
+    sel : LinearSelection
+) -> string {
+
+    let s = start(sel)
+    let e = end(sel)
+
+    return buffer.slice(
+        b,
+        s,
+        e - s
+    )
+}
+
+proc delete(
+    b : buffer.Buffer,
+    sel : LinearSelection
+) -> [buffer.Buffer] {
+
+    let s = start(sel)
+    let e = end(sel)
+
+    set b =
+        buffer.delete(
+            b,
+            s,
+            e - s
+        )
+
+    let collapsed =
+        LinearSelection {
+            anchor_offset: s,
+            active_offset: s,
+            mode: sel.mode
+        }
+
+    return [b, collapsed]
+}
+
+proc replace(
+    b : buffer.Buffer,
+    sel : LinearSelection,
+    text : string
+) -> [buffer.Buffer] {
+
+    let s = start(sel)
+    let e = end(sel)
+
+    set b =
+        buffer.delete(
+            b,
+            s,
+            e - s
+        )
+
+    set b =
+        buffer.insert(
+            b,
+            s,
+            text
+        )
+
+    let new_offset =
+        s + text.length
+
+    return [
+        b,
+        LinearSelection {
+            anchor_offset: new_offset,
+            active_offset: new_offset,
+            mode: sel.mode
+        }
+    ]
+}
+
+
+<<< ===================================================== >>
+<<< Expand Utilities >>
+<<< ===================================================== >>>
+
+proc expand_left(
+    sel : LinearSelection,
+    count : int
+) -> LinearSelection {
+
+    set sel.active_offset =
+        sel.active_offset - count
+
+    if sel.active_offset < 0 {
+        set sel.active_offset = 0
+    }
+
+    return sel
+}
+
+proc expand_right(
+    sel : LinearSelection,
+    max_len : int,
+    count : int
+) -> LinearSelection {
+
+    set sel.active_offset =
+        sel.active_offset + count
+
+    if sel.active_offset > max_len {
+        set sel.active_offset = max_len
+    }
+
+    return sel
+}

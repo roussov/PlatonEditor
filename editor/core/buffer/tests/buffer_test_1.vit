@@ -1,1 +1,128 @@
-#  stress test 1
+space platon.editor.core.buffer.tests.buffer_test_1
+
+pull platon.editor.core.buffer.piece_table.table as table
+pull platon.editor.core.buffer.piece_table.history as history
+pull platon.editor.core.buffer.rope.rope_node as rope_node
+pull platon.editor.core.buffer.rope.rope_split as rope_split
+pull platon.editor.core.buffer.rope.rope_merge as rope_merge
+
+<<< Buffer Integration Test 1 ULTRA MAX+++ >>>
+<<< Validates insert/delete/replace + undo/redo + rope split/merge >>>
+
+
+proc assert_equal(
+    a : string,
+    b : string
+) {
+
+    if a != b {
+        panic("Assertion failed")
+    }
+}
+
+proc test_piece_table_basic() {
+
+    let te = table.new_engine()
+    let pt = table.new("Hello")
+
+    <<< Insert >>>
+    set pt =
+        table.insert(te, pt, 5, " World")
+
+    let result1 =
+        table.materialize(pt)
+
+    assert_equal(result1, "Hello World")
+
+    <<< Delete >>>
+    set pt =
+        table.delete(te, pt, 0, 1)
+
+    let result2 =
+        table.materialize(pt)
+
+    assert_equal(result2, "ello World")
+
+    <<< Replace >>>
+    set pt =
+        table.replace(te, pt, 0, 4, "Ultra")
+
+    let result3 =
+        table.materialize(pt)
+
+    assert_equal(result3, "Ultra World")
+}
+
+proc test_history_basic() {
+
+    let h = history.new()
+
+    set h = history.begin(h)
+
+    set h =
+        history.record(
+            h,
+            history.OperationKind.Insert,
+            0,
+            5,
+            "Hello"
+        )
+
+    set h = history.commit(h)
+
+    set h = history.undo(h)
+
+    if history.undo_depth(h) != 0 {
+        panic("Undo depth invalid")
+    }
+
+    set h = history.redo(h)
+
+    if history.redo_depth(h) != 0 {
+        panic("Redo depth invalid")
+    }
+}
+
+proc test_rope_split_merge() {
+
+    let rne = rope_node.new()
+    let root =
+        rope_node.leaf(rne, "UltraRopeTest")
+
+    let rse = rope_split.new()
+
+    let parts =
+        rope_split.split_rebalanced(
+            rse,
+            root,
+            5
+        )
+
+    if parts[0] == null or
+       parts[1] == null {
+        panic("Split failed")
+    }
+
+    let rme = rope_merge.new(3)
+
+    let merged =
+        rope_merge.merge_full(
+            rme,
+            parts[0],
+            parts[1]
+        )
+
+    let char0 =
+        rope_node.char_at(merged, 0)
+
+    if char0 != "U" {
+        panic("Merge failed")
+    }
+}
+
+proc run_all_tests() {
+
+    test_piece_table_basic()
+    test_history_basic()
+    test_rope_split_merge()
+}

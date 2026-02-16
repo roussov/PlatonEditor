@@ -1,1 +1,343 @@
-#  multi-cursor benchmark
+space platon.editor.core.cursor.bench.multi_cursor_bench
+
+pull platon.editor.core.buffer.buffer as buffer
+pull platon.editor.core.buffer.cursor as cursor
+
+<<< Multi Cursor Benchmark ULTRA MAX >>>
+<<< Scalability + insert/delete adjustment + collision stress >>>
+
+
+<<< ===================================================== >>
+<<< Timer Stub >>
+<<< ===================================================== >>>
+
+proc now() -> int {
+    return 0
+}
+
+proc elapsed(start : int, end : int) -> int {
+    return end - start
+}
+
+
+<<< ===================================================== >>
+<<< Deterministic RNG >>
+<<< ===================================================== >>>
+
+form Rng {
+    seed : int
+}
+
+proc rng_new(seed : int) -> Rng {
+    return Rng { seed: seed }
+}
+
+proc rng_next(r : Rng) -> Rng {
+    set r.seed = (r.seed * 1103515245 + 12345) % 2147483647
+    return r
+}
+
+proc rng_val(r : Rng, max : int) -> [Rng] {
+
+    if max <= 0 {
+        return [r, 0]
+    }
+
+    set r = rng_next(r)
+
+    return [r, r.seed % max]
+}
+
+
+<<< ===================================================== >>
+<<< Massive Multi-Cursor Creation >>
+<<< ===================================================== >>>
+
+proc bench_creation_scale() {
+
+    let b =
+        buffer.new("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+
+    let set =
+        cursor.new_set()
+
+    let start_time = now()
+
+    let i = 0
+
+    loop {
+
+        if i >= 10000 {
+            break
+        }
+
+        set set =
+            cursor.add_cursor(set, i % buffer.length(b))
+
+        set i = i + 1
+    }
+
+    let end_time = now()
+
+    let duration =
+        elapsed(start_time, end_time)
+
+    <<< Result duration captured (creation scale) >>>
+}
+
+
+<<< ===================================================== >>
+<<< Insert Adjustment Stress >>
+<<< ===================================================== >>>
+
+proc bench_insert_adjustment() {
+
+    let b =
+        buffer.new("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+    let set =
+        cursor.new_set()
+
+    let i = 0
+
+    loop {
+
+        if i >= 1000 {
+            break
+        }
+
+        set set =
+            cursor.add_cursor(set, i % buffer.length(b))
+
+        set i = i + 1
+    }
+
+    let start_time = now()
+
+    let j = 0
+
+    loop {
+
+        if j >= 5000 {
+            break
+        }
+
+        set set =
+            cursor.adjust_set_after_insert(
+                set,
+                5,
+                1
+            )
+
+        set j = j + 1
+    }
+
+    let end_time = now()
+
+    let duration =
+        elapsed(start_time, end_time)
+
+    <<< Result duration captured (insert adjust) >>>
+}
+
+
+<<< ===================================================== >>
+<<< Delete Adjustment Stress >>
+<<< ===================================================== >>>
+
+proc bench_delete_adjustment() {
+
+    let b =
+        buffer.new("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+    let set =
+        cursor.new_set()
+
+    let i = 0
+
+    loop {
+
+        if i >= 1000 {
+            break
+        }
+
+        set set =
+            cursor.add_cursor(set, i % buffer.length(b))
+
+        set i = i + 1
+    }
+
+    let start_time = now()
+
+    let j = 0
+
+    loop {
+
+        if j >= 5000 {
+            break
+        }
+
+        set set =
+            cursor.adjust_set_after_delete(
+                set,
+                5,
+                1
+            )
+
+        set j = j + 1
+    }
+
+    let end_time = now()
+
+    let duration =
+        elapsed(start_time, end_time)
+
+    <<< Result duration captured (delete adjust) >>>
+}
+
+
+<<< ===================================================== >>
+<<< Randomized Movement with Collisions >>
+<<< ===================================================== >>>
+
+proc bench_random_collision() {
+
+    let b =
+        buffer.new("LoremIpsumDolorSitAmetConsectetur")
+
+    let set =
+        cursor.new_set()
+
+    let i = 0
+
+    loop {
+
+        if i >= 2000 {
+            break
+        }
+
+        set set =
+            cursor.add_cursor(set, i % buffer.length(b))
+
+        set i = i + 1
+    }
+
+    let r =
+        rng_new(2026)
+
+    let start_time = now()
+
+    let j = 0
+
+    loop {
+
+        if j >= 10000 {
+            break
+        }
+
+        let k = 0
+
+        loop {
+
+            if k >= set.cursors.length {
+                break
+            }
+
+            let c = set.cursors[k]
+
+            let rv =
+                rng_val(r, 2)
+
+            set r = rv[0]
+
+            if rv[1] == 0 {
+
+                set c =
+                    cursor.move_left(b, c)
+
+            } else {
+
+                set c =
+                    cursor.move_right(b, c)
+            }
+
+            set set.cursors[k] = c
+
+            set k = k + 1
+        }
+
+        set j = j + 1
+    }
+
+    let end_time = now()
+
+    let duration =
+        elapsed(start_time, end_time)
+
+    <<< Result duration captured (random collision) >>>
+}
+
+
+<<< ===================================================== >>
+<<< Extreme Stress 10k Cursors >>
+<<< ===================================================== >>>
+
+proc bench_extreme_10k() {
+
+    let b =
+        buffer.new("X")
+
+    let set =
+        cursor.new_set()
+
+    let i = 0
+
+    loop {
+
+        if i >= 10000 {
+            break
+        }
+
+        set set =
+            cursor.add_cursor(set, 0)
+
+        set i = i + 1
+    }
+
+    let start_time = now()
+
+    let j = 0
+
+    loop {
+
+        if j >= 1000 {
+            break
+        }
+
+        set set =
+            cursor.adjust_set_after_insert(
+                set,
+                0,
+                1
+            )
+
+        set j = j + 1
+    }
+
+    let end_time = now()
+
+    let duration =
+        elapsed(start_time, end_time)
+
+    <<< Result duration captured (extreme 10k) >>>
+}
+
+
+proc run_all_benchmarks() {
+
+    bench_creation_scale()
+    bench_insert_adjustment()
+    bench_delete_adjustment()
+    bench_random_collision()
+    bench_extreme_10k()
+}

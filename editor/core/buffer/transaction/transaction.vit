@@ -1,5 +1,234 @@
-space platon.editor.core.buffer.transaction
+space platon.editor.core.buffer.transaction.transaction
 
-proc begin() {}
-proc commit() {}
-proc rollback() {}
+pull platon.editor.core.buffer.transaction.journal as journal
+
+<<< Transaction Engine ULTRA MAX >>>
+<<< Undo/Redo manager + journal integration + snapshot safety >>>
+
+
+<<< ===================================================== >>
+<<< Models >>
+<<< ===================================================== >>>
+
+form TransactionState {
+    j               : journal.Journal
+    undo_stack      : [int]
+    redo_stack      : [int]
+    active_tx       : int
+}
+
+const INVALID_TX : int = -1
+
+
+<<< ===================================================== >>
+<<< Initialization >>
+<<< ===================================================== >>>
+
+proc new() -> TransactionState {
+
+    return TransactionState {
+        j: journal.new(),
+        undo_stack: [],
+        redo_stack: [],
+        active_tx: INVALID_TX
+    }
+}
+
+
+<<< ===================================================== >>
+<<< Transaction Lifecycle >>
+<<< ===================================================== >>>
+
+proc begin(ts : TransactionState) -> TransactionState {
+
+    set ts.j = journal.begin(ts.j)
+
+    set ts.active_tx = ts.j.current_tx
+
+    return ts
+}
+
+proc commit(ts : TransactionState) -> TransactionState {
+
+    if ts.active_tx == INVALID_TX {
+        return ts
+    }
+
+    set ts.j = journal.commit(ts.j)
+
+    set ts.undo_stack =
+        ts.undo_stack + [ts.active_tx]
+
+    set ts.redo_stack = []
+
+    set ts.active_tx = INVALID_TX
+
+    return ts
+}
+
+
+<<< ===================================================== >>
+<<< Record Operations >>
+<<< ===================================================== >>>
+
+proc record_insert(
+    ts : TransactionState,
+    pos : int,
+    text : string
+) -> TransactionState {
+
+    set ts.j =
+        journal.record_insert(
+            ts.j,
+            pos,
+            text
+        )
+
+    return ts
+}
+
+proc record_delete(
+    ts : TransactionState,
+    pos : int,
+    len : int,
+    old_text : string
+) -> TransactionState {
+
+    set ts.j =
+        journal.record_delete(
+            ts.j,
+            pos,
+            len,
+            old_text
+        )
+
+    return ts
+}
+
+proc record_replace(
+    ts : TransactionState,
+    pos : int,
+    len : int,
+    old_text : string
+) -> TransactionState {
+
+    set ts.j =
+        journal.record_replace(
+            ts.j,
+            pos,
+            len,
+            old_text
+        )
+
+    return ts
+}
+
+
+<<< ===================================================== >>
+<<< Undo / Redo >>
+<<< ===================================================== >>>
+
+proc can_undo(ts : TransactionState) -> bool {
+    return ts.undo_stack.length > 0
+}
+
+proc can_redo(ts : TransactionState) -> bool {
+    return ts.redo_stack.length > 0
+}
+
+proc undo(ts : TransactionState) -> TransactionState {
+
+    if not can_undo(ts) {
+        return ts
+    }
+
+    let index = ts.undo_stack.length - 1
+    let tx_id = ts.undo_stack[index]
+
+    set ts.undo_stack =
+        ts.undo_stack[0:index]
+
+    set ts.redo_stack =
+        ts.redo_stack + [tx_id]
+
+    set ts.j =
+        journal.rollback_to(
+            ts.j,
+            tx_id - 1
+        )
+
+    return ts
+}
+
+proc redo(ts : TransactionState) -> TransactionState {
+
+    if not can_redo(ts) {
+        return ts
+    }
+
+    let index = ts.redo_stack.length - 1
+    let tx_id = ts.redo_stack[index]
+
+    set ts.redo_stack =
+        ts.redo_stack[0:index]
+
+    set ts.undo_stack =
+        ts.undo_stack + [tx_id]
+
+    set ts.j.current_tx = tx_id
+    set ts.j.committed_tx = tx_id
+
+    return ts
+}
+
+
+<<< ===================================================== >>
+<<< Snapshot Support >>
+<<< ===================================================== >>>
+
+proc snapshot_tx(ts : TransactionState) -> int {
+    return ts.j.committed_tx
+}
+
+proc restore_to(ts : TransactionState, tx_id : int) -> TransactionState {
+
+    set ts.j =
+        journal.rollback_to(
+            ts.j,
+            tx_id
+        )
+
+    set ts.undo_stack = []
+    set ts.redo_stack = []
+    set ts.active_tx = INVALID_TX
+
+    return ts
+}
+
+
+<<< ===================================================== >>
+<<< Integrity >>
+<<< ===================================================== >>>
+
+proc journal_checksum(ts : TransactionState) -> int {
+    return journal.checksum(ts.j)
+}
+
+proc total_transactions(ts : TransactionState) -> int {
+    return ts.j.current_tx
+}
+
+
+<<< ===================================================== >>
+<<< Reset >>
+<<< ===================================================== >>>
+
+proc clear(ts : TransactionState) -> TransactionState {
+
+    set ts.j = journal.clear(ts.j)
+    set ts.undo_stack = []
+    set ts.redo_stack = []
+    set ts.active_tx = INVALID_TX
+
+    return ts
+}

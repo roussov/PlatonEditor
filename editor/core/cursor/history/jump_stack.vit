@@ -1,6 +1,200 @@
-space platon.editor.core.cursor.history
+space platon.editor.core.cursor.history.jump_stack
 
-proc push_jump(pos : Position) {}
-proc pop_jump() -> Position {
-    give Position { line: 0, column: 0 }
+<<< Jump Stack ULTRA MAX CORE >>>
+<<< Cursor navigation history + backward/forward + branch discard >>>
+
+
+<<< ===================================================== >>
+<<< Models >>
+<<< ===================================================== >>>
+
+form JumpEntry {
+    offset  : int
+    version : int
+}
+
+form JumpStack {
+    entries     : [JumpEntry]
+    index       : int
+    capacity    : int
+}
+
+const DEFAULT_CAPACITY : int = 256
+
+
+<<< ===================================================== >>
+<<< Initialization >>
+<<< ===================================================== >>>
+
+proc new() -> JumpStack {
+
+    return JumpStack {
+        entries: [],
+        index: -1,
+        capacity: DEFAULT_CAPACITY
+    }
+}
+
+
+<<< ===================================================== >>
+<<< Internal Helpers >>
+<<< ===================================================== >>>
+
+proc size(js : JumpStack) -> int {
+    return js.entries.length
+}
+
+proc current(js : JumpStack) -> JumpEntry {
+
+    if js.index < 0 or js.index >= js.entries.length {
+        return JumpEntry { offset: 0, version: 0 }
+    }
+
+    return js.entries[js.index]
+}
+
+proc trim_forward(js : JumpStack) -> JumpStack {
+
+    if js.index < js.entries.length - 1 {
+
+        set js.entries =
+            js.entries[0:js.index + 1]
+    }
+
+    return js
+}
+
+proc ensure_capacity(js : JumpStack) -> JumpStack {
+
+    if js.entries.length < js.capacity {
+        return js
+    }
+
+    <<< Drop oldest entry when full >>>
+
+    set js.entries =
+        js.entries[1:js.entries.length]
+
+    set js.index =
+        js.index - 1
+
+    return js
+}
+
+
+<<< ===================================================== >>
+<<< Push Jump >>
+<<< ===================================================== >>>
+
+proc push(
+    js : JumpStack,
+    offset : int,
+    version : int
+) -> JumpStack {
+
+    <<< Avoid duplicate consecutive jumps >>>
+
+    if js.index >= 0 {
+
+        let cur = js.entries[js.index]
+
+        if cur.offset == offset {
+            return js
+        }
+    }
+
+    set js =
+        trim_forward(js)
+
+    set js =
+        ensure_capacity(js)
+
+    let entry =
+        JumpEntry {
+            offset: offset,
+            version: version
+        }
+
+    set js.entries =
+        js.entries + [entry]
+
+    set js.index =
+        js.entries.length - 1
+
+    return js
+}
+
+
+<<< ===================================================== >>
+<<< Navigation >>
+<<< ===================================================== >>>
+
+proc can_back(js : JumpStack) -> bool {
+    return js.index > 0
+}
+
+proc can_forward(js : JumpStack) -> bool {
+    return js.index < js.entries.length - 1
+}
+
+proc back(js : JumpStack) -> [JumpStack] {
+
+    if not can_back(js) {
+        return [js, current(js)]
+    }
+
+    set js.index =
+        js.index - 1
+
+    return [js, js.entries[js.index]]
+}
+
+proc forward(js : JumpStack) -> [JumpStack] {
+
+    if not can_forward(js) {
+        return [js, current(js)]
+    }
+
+    set js.index =
+        js.index + 1
+
+    return [js, js.entries[js.index]]
+}
+
+
+<<< ===================================================== >>
+<<< Replace Current >>
+<<< Used when cursor moves within same logical location >>
+<<< ===================================================== >>>
+
+proc replace_current(
+    js : JumpStack,
+    offset : int,
+    version : int
+) -> JumpStack {
+
+    if js.index < 0 {
+        return js
+    }
+
+    set js.entries[js.index] =
+        JumpEntry {
+            offset: offset,
+            version: version
+        }
+
+    return js
+}
+
+
+<<< ===================================================== >>
+<<< Clear >>
+<<< ===================================================== >>>
+
+proc clear(js : JumpStack) -> JumpStack {
+
+    set js.entries = []
+    set js.index = -1
+
+    return js
 }
